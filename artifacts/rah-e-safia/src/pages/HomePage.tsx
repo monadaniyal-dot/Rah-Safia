@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
 import { Heart, Sparkles } from "lucide-react";
+import { useLocation } from "wouter";
 import FeatureCard from "@/components/ui/FeatureCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { featureCards } from "@/lib/constants";
 
 export default function HomePage() {
+  const [, navigate] = useLocation();
+
   return (
     <div className="min-h-full flex flex-col">
       {/* Mobile header */}
@@ -122,9 +125,7 @@ export default function HomePage() {
               key={card.id}
               card={card}
               index={index}
-              onClick={() => {
-                /* navigation will be wired when features are implemented */
-              }}
+              onClick={() => navigate(card.path)}
             />
           ))}
         </div>
