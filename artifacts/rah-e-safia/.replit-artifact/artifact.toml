@@ -1,0 +1,25 @@
+kind = "web"
+previewPath = "/"
+title = "Rah-e-Safia"
+version = "1.0.0"
+id = "RaheSafia7xK2mPqN9vLw"
+
+[[services]]
+localPort = 8082
+name = "Rah-e-Safia"
+paths = ["/"]
+
+[services.env]
+PORT = "8082"
+BASE_PATH = "/"
+
+[services.development]
+run = "pnpm --filter @workspace/rah-e-safia run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/rah-e-safia", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
