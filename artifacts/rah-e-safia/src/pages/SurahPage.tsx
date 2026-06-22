@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2, Bookmark as BookmarkIcon, BookmarkCheck } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
+import { useBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
 
 /* ── Skeleton loader ── */
@@ -34,12 +35,16 @@ function AyahCard({
   surahNumber,
   mode,
   index,
+  bookmarked,
+  onToggleBookmark,
 }: {
   ayah: AyahWithTranslations;
   surahName: string;
   surahNumber: number;
   mode: TranslationMode;
   index: number;
+  bookmarked: boolean;
+  onToggleBookmark: () => void;
 }) {
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
@@ -54,11 +59,11 @@ function AyahCard({
     >
       {/* Ayah header row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-sm shrink-0">
             <span className="text-white text-xs font-bold">{ayah.numberInSurah}</span>
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="text-xs text-muted-foreground">
               {surahName} {surahNumber}:{ayah.numberInSurah}
             </span>
@@ -67,11 +72,29 @@ function AyahCard({
             </span>
           </div>
         </div>
-        {hasSajda && (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gold-muted text-gold border border-gold/20">
-            ۩ Sajda
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {hasSajda && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gold-muted text-gold border border-gold/20">
+              ۩ Sajda
+            </span>
+          )}
+          <button
+            onClick={onToggleBookmark}
+            aria-label={bookmarked ? "Remove bookmark" : "Bookmark this ayah"}
+            className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
+              bookmarked
+                ? "bg-gold-muted hover:bg-gold/20"
+                : "bg-secondary hover:bg-accent"
+            )}
+          >
+            {bookmarked ? (
+              <BookmarkCheck className="w-4 h-4 text-gold fill-gold" strokeWidth={1.8} />
+            ) : (
+              <BookmarkIcon className="w-4 h-4 text-muted-foreground" strokeWidth={1.8} />
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="px-4 pb-4">
@@ -148,6 +171,7 @@ export default function SurahPage() {
 
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
+  const { isBookmarked, toggleBookmark } = useBookmarks();
 
   const load = (num: number) => {
     setIsLoading(true);
@@ -354,6 +378,16 @@ export default function SurahPage() {
                   surahNumber={surahNum}
                   mode={mode}
                   index={idx}
+                  bookmarked={isBookmarked(surahNum, ayah.numberInSurah)}
+                  onToggleBookmark={() =>
+                    toggleBookmark({
+                      surahNumber: surahNum,
+                      surahName: surah.name,
+                      surahArabicName: surah.arabicName,
+                      ayahNumber: ayah.numberInSurah,
+                      arabicText: ayah.arabic,
+                    })
+                  }
                 />
               ))}
             </div>

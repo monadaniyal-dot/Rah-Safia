@@ -5,6 +5,7 @@ import {
   MessageSquareQuote,
   BookMarked,
   Home,
+  Bookmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -62,6 +63,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "الحديث الشريف",
     icon: MessageSquareQuote,
     path: "/hadith",
+  },
+  {
+    id: "bookmarks",
+    label: "Bookmarks",
+    arabicLabel: "المحفوظات",
+    icon: Bookmark,
+    path: "/bookmarks",
   },
   {
     id: "tafseer",

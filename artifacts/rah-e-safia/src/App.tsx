@@ -6,6 +6,7 @@ import QiblaFinderPage from "@/pages/QiblaFinderPage";
 import QuranPage from "@/pages/QuranPage";
 import SurahPage from "@/pages/SurahPage";
 import HadithPage from "@/pages/HadithPage";
+import BookmarksPage from "@/pages/BookmarksPage";
 
 export default function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/quran/:number" component={SurahPage} />
           <Route path="/quran" component={QuranPage} />
           <Route path="/hadith" component={HadithPage} />
+          <Route path="/bookmarks" component={BookmarksPage} />
           <Route path="/tafseer" component={HomePage} />
         </Switch>
       </AppShell>
