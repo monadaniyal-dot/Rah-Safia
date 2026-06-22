@@ -91,11 +91,10 @@ function AyahCard({
           {displayUrdu && ayah.urdu && (
             <motion.div
               key="urdu"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
             >
               <div className="border-t border-border/60 pt-3 pb-1">
                 <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
@@ -116,11 +115,10 @@ function AyahCard({
           {displayEnglish && ayah.english && (
             <motion.div
               key="english"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
             >
               <div className="border-t border-border/60 pt-3">
                 <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
