@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, Languages, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
@@ -87,7 +87,27 @@ function AyahCard({
         {/* Translations — animated in/out */}
         <AnimatePresence>
 
-          {/* Urdu (Jalandhri) */}
+          {/* English (Sahih International) — shown first */}
+          {displayEnglish && ayah.english && (
+            <motion.div
+              key="english"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="border-t border-border/60 pt-3 pb-1">
+                <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
+                  English — Sahih International
+                </p>
+                <p className="text-sm text-foreground/80 leading-relaxed">
+                  {ayah.english}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Urdu (Jalandhri) — shown below English */}
           {displayUrdu && ayah.urdu && (
             <motion.div
               key="urdu"
@@ -106,26 +126,6 @@ function AyahCard({
                   lang="ur"
                 >
                   {ayah.urdu}
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* English (Sahih International) */}
-          {displayEnglish && ayah.english && (
-            <motion.div
-              key="english"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="border-t border-border/60 pt-3">
-                <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
-                  English — Sahih International
-                </p>
-                <p className="text-sm text-foreground/80 leading-relaxed">
-                  {ayah.english}
                 </p>
               </div>
             </motion.div>
@@ -211,27 +211,6 @@ export default function SurahPage() {
           </p>
         </div>
 
-        {/* Row 2: language toggle */}
-        <div className="px-4 lg:px-8 pb-3 flex items-center gap-2">
-          <Languages className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.8} />
-          <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            {TRANSLATION_MODES.map((tm) => (
-              <button
-                key={tm.id}
-                onClick={() => setMode(tm.id)}
-                title={tm.label}
-                className={cn(
-                  "shrink-0 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 border whitespace-nowrap",
-                  mode === tm.id
-                    ? "gradient-primary text-white border-primary/30 shadow-sm"
-                    : "bg-secondary text-muted-foreground border-border hover:text-foreground hover:bg-accent"
-                )}
-              >
-                {tm.shortLabel}
-              </button>
-            ))}
-          </div>
-        </div>
       </header>
 
       <div className="flex-1 px-4 lg:px-8 py-6 max-w-2xl mx-auto w-full">
@@ -272,6 +251,34 @@ export default function SurahPage() {
           </div>
         </motion.div>
 
+        {/* ── Translation selector ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mb-6 rounded-2xl border border-border bg-card p-4 shadow-sm"
+        >
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Translation
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {TRANSLATION_MODES.map((tm) => (
+              <button
+                key={tm.id}
+                onClick={() => setMode(tm.id)}
+                className={cn(
+                  "px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all duration-200 border",
+                  mode === tm.id
+                    ? "gradient-primary text-white border-primary/30 shadow-sm"
+                    : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                )}
+              >
+                {tm.label}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
         {/* ── Bismillah banner (surahs 2–114, skip 1 & 9) ── */}
         {showBismillahBanner && (
           <motion.div
@@ -289,7 +296,7 @@ export default function SurahPage() {
               </p>
             )}
             {showUrdu(mode) && (
-              <p className="font-arabic text-base text-muted-foreground mt-1" dir="rtl">
+              <p className="font-arabic text-base text-muted-foreground mt-2" dir="rtl">
                 اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے
               </p>
             )}
