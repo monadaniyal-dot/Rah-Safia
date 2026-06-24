@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "pnpm install --prefer-offline && vite dev",
-    "build": "pnpm install --prefer-offline && vite build",
+    "dev": "pnpm install --prefer-offline --filter @workspace/rah-e-safia && vite dev",
+    "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

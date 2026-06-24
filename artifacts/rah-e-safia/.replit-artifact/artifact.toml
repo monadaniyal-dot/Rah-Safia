@@ -6,7 +6,7 @@ id = "RaheSafia7xK2mPqN9vLw"
 
 [[services]]
 localPort = 8082
-name = "Rah-e-Safia"
+name = "web"
 paths = ["/"]
 
 [services.env]
