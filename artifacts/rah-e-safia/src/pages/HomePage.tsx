@@ -3,6 +3,7 @@ import { Heart, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import FeatureCard from "@/components/ui/FeatureCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import DailyInspiration from "@/components/ui/DailyInspiration";
 import { featureCards } from "@/lib/constants";
 
 export default function HomePage() {
@@ -101,6 +102,9 @@ export default function HomePage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Daily Inspiration */}
+        <DailyInspiration />
 
         {/* Section heading */}
         <motion.div
