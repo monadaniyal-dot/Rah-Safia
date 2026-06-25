@@ -6,6 +6,7 @@ import {
   BookMarked,
   Home,
   Bookmark,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -63,6 +64,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "الحديث الشريف",
     icon: MessageSquareQuote,
     path: "/hadith",
+  },
+  {
+    id: "asmaul-husna",
+    label: "Names of Allah",
+    arabicLabel: "أسماء الله الحسنى",
+    icon: Sparkles,
+    path: "/asmaul-husna",
   },
   {
     id: "bookmarks",
@@ -130,5 +138,15 @@ export const featureCards: FeatureCard[] = [
     colorClass: "from-sky-600 to-sky-800",
     iconBgClass: "bg-sky-500/20",
     path: "/tafseer",
+  },
+  {
+    id: "asmaul-husna",
+    icon: Sparkles,
+    arabicTitle: "أسماء الله الحسنى",
+    title: "Names of Allah",
+    description: "Explore and reflect on all 99 beautiful names of Allah",
+    colorClass: "from-violet-600 to-violet-900",
+    iconBgClass: "bg-violet-500/20",
+    path: "/asmaul-husna",
   },
 ];
