@@ -44,6 +44,19 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     dataNote: "",
   },
   {
+    id: "ibnkathir",
+    name: "Tafsir Ibn Kathir",
+    urduName: "تفسیر ابن کثیر",
+    author: "Hafiz Ibn Kathir",
+    authorUrdu: "حافظ ابن کثیر",
+    lang: "english",
+    description:
+      "The world's most widely read classical Sunni Tafseer — comprehensive abridged English edition, covering every ayah with hadith, context, and scholarly commentary.",
+    qurancomId: 169,
+    status: "available",
+    dataNote: "",
+  },
+  {
     id: "tafhim",
     name: "Tafhim-ul-Quran",
     urduName: "تفہیم القرآن",
