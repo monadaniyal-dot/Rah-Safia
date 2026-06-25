@@ -1,13 +1,69 @@
-import { motion } from "framer-motion";
-import { Heart, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart, Sparkles, BookOpen, BookMarked, ArrowRight, Clock } from "lucide-react";
 import { useLocation } from "wouter";
 import FeatureCard from "@/components/ui/FeatureCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import DailyInspiration from "@/components/ui/DailyInspiration";
 import { featureCards } from "@/lib/constants";
+import { useReadingProgress, relativeTime, type ProgressEntry } from "@/lib/reading-progress";
 
+// ─── Continue Reading card ────────────────────────────────────────────────────
+function ProgressCard({
+  entry,
+  type,
+  onPress,
+}: {
+  entry: ProgressEntry;
+  type: "quran" | "tafseer";
+  onPress: () => void;
+}) {
+  const Icon = type === "quran" ? BookOpen : BookMarked;
+  const label = type === "quran" ? "Qur'an" : "Tafseer";
+  const sub = type === "tafseer" && entry.sourceName ? entry.sourceName : label;
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.3 }}
+      onClick={onPress}
+      className="w-full text-left rounded-2xl bg-card border border-primary/15 shadow-sm overflow-hidden hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
+    >
+      <div className="h-0.5 gradient-primary" />
+      <div className="p-4 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-sm">
+          <Icon className="w-4.5 h-4.5 text-white" strokeWidth={1.8} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">{sub}</span>
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <Clock className="w-2.5 h-2.5" strokeWidth={2} />
+              {relativeTime(entry.timestamp)}
+            </span>
+          </div>
+          <p className="font-semibold text-foreground text-sm leading-tight truncate">
+            {entry.surahName}
+          </p>
+          <p className="font-arabic text-xs text-muted-foreground leading-tight mt-0.5" dir="rtl">
+            {entry.surahArabicName}
+          </p>
+        </div>
+        <ArrowRight
+          className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200 shrink-0"
+          strokeWidth={2}
+        />
+      </div>
+    </motion.button>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [, navigate] = useLocation();
+  const progress = useReadingProgress();
+  const hasProgress = !!(progress.quran || progress.tafseer);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -105,6 +161,46 @@ export default function HomePage() {
 
         {/* Daily Inspiration */}
         <DailyInspiration />
+
+        {/* Continue Reading */}
+        <AnimatePresence>
+          {hasProgress && (
+            <motion.section
+              key="continue-reading"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="mb-8"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Continue Reading</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pick up where you left off</p>
+                </div>
+                <div className="font-arabic text-muted-foreground text-sm" dir="rtl">
+                  متابعة القراءة
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                {progress.quran && (
+                  <ProgressCard
+                    entry={progress.quran}
+                    type="quran"
+                    onPress={() => navigate(progress.quran!.path)}
+                  />
+                )}
+                {progress.tafseer && (
+                  <ProgressCard
+                    entry={progress.tafseer}
+                    type="tafseer"
+                    onPress={() => navigate(progress.tafseer!.path)}
+                  />
+                )}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* Section heading */}
         <motion.div

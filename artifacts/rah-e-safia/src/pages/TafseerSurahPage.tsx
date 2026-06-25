@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation, useSearch } from "wouter";
+import { saveTafseerProgress } from "@/lib/reading-progress";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2,
@@ -185,6 +186,13 @@ export default function TafseerSurahPage() {
     setAyahs([]);
     load(surahNum);
   }, [surahNum]);
+
+  // Save tafseer reading progress whenever this surah's ayahs load
+  useEffect(() => {
+    if (ayahs.length > 0 && surah && sourceMeta) {
+      saveTafseerProgress(surahNum, surah.name, surah.arabicName, 1, sourceId, sourceMeta.name);
+    }
+  }, [ayahs.length, surahNum, surah, sourceId, sourceMeta]);
 
   if (!surah) {
     return (

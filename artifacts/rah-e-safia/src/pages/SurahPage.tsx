@@ -8,6 +8,7 @@ import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "
 import { useBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
+import { saveQuranProgress } from "@/lib/reading-progress";
 
 /* ── Skeleton loader ── */
 function AyahSkeleton({ index }: { index: number }) {
@@ -195,6 +196,13 @@ export default function SurahPage() {
     setAyahs([]);
     load(surahNum);
   }, [surahNum]);
+
+  // Save reading progress whenever this surah's ayahs load
+  useEffect(() => {
+    if (ayahs.length > 0 && surah) {
+      saveQuranProgress(surahNum, surah.name, surah.arabicName, 1);
+    }
+  }, [ayahs.length, surahNum, surah]);
 
   if (!surah) {
     return (
