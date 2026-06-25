@@ -8,6 +8,7 @@ import SurahPage from "@/pages/SurahPage";
 import HadithPage from "@/pages/HadithPage";
 import BookmarksPage from "@/pages/BookmarksPage";
 import AsmaulHusnaPage from "@/pages/AsmaulHusnaPage";
+import TafseerPage from "@/pages/TafseerPage";
 
 export default function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -24,7 +25,7 @@ export default function App() {
           <Route path="/hadith" component={HadithPage} />
           <Route path="/bookmarks" component={BookmarksPage} />
           <Route path="/asmaul-husna" component={AsmaulHusnaPage} />
-          <Route path="/tafseer" component={HomePage} />
+          <Route path="/tafseer" component={TafseerPage} />
         </Switch>
       </AppShell>
     </Router>

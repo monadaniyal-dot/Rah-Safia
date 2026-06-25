@@ -7,6 +7,7 @@ import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api"
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
 import { useBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
+import TafseerPanel from "@/components/ui/TafseerPanel";
 
 /* ── Skeleton loader ── */
 function AyahSkeleton({ index }: { index: number }) {
@@ -156,6 +157,9 @@ function AyahCard({
 
         </AnimatePresence>
       </div>
+
+      {/* Tafseer — lazy-loaded, per-ayah */}
+      <TafseerPanel surahNum={surahNumber} ayahNum={ayah.numberInSurah} />
     </motion.article>
   );
 }
