@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookMarked, ChevronDown, ChevronUp, Loader2, AlertCircle, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,10 @@ import {
 interface TafseerPanelProps {
   surahNum: number;
   ayahNum: number;
+  /** Pre-select a tafseer source by id (e.g. "maarif") */
+  defaultSource?: string;
+  /** Auto-open the panel on mount */
+  autoOpen?: boolean;
 }
 
 /** Strip any <script>/<style> tags from quran.com HTML for safety */
@@ -20,9 +24,10 @@ function sanitize(html: string): string {
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
 }
 
-export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
-  const [open, setOpen] = useState(false);
-  const [sourceId, setSourceId] = useState(TAFSEER_SOURCES[0].id);
+export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpen = false }: TafseerPanelProps) {
+  const resolvedDefault = defaultSource ?? TAFSEER_SOURCES[0].id;
+  const [open, setOpen] = useState(autoOpen);
+  const [sourceId, setSourceId] = useState(resolvedDefault);
   const [result, setResult] = useState<TafseerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [cache, setCache] = useState<Record<string, TafseerResult>>({});
@@ -42,6 +47,23 @@ export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
     },
     [surahNum, ayahNum, cache]
   );
+
+  // Auto-load when autoOpen is true
+  useEffect(() => {
+    if (autoOpen) {
+      load(resolvedDefault);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // If defaultSource changes externally, update sourceId and reload
+  useEffect(() => {
+    if (defaultSource && defaultSource !== sourceId) {
+      setSourceId(defaultSource);
+      if (open) load(defaultSource);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultSource]);
 
   const handleToggle = () => {
     if (!open) {
@@ -72,7 +94,7 @@ export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
           strokeWidth={1.8}
         />
         <span className={cn("text-xs font-semibold flex-1", open ? "text-primary" : "text-muted-foreground")}>
-          View Tafseer
+          {open ? "Hide Tafseer" : "View Tafseer"}
         </span>
         {open
           ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={2} />

@@ -164,10 +164,14 @@ export default function TafseerPage() {
       return;
     }
     setSelectedSourceId(srcId);
-    // Scroll to surah list after a tick
     setTimeout(() => {
       document.getElementById("tafseer-surah-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
+  };
+
+  const handleSurahClick = (surahNumber: number) => {
+    const sourceParam = selectedSourceId ? `?source=${selectedSourceId}` : "";
+    navigate(`/tafseer/surah/${surahNumber}${sourceParam}`);
   };
 
   return (
@@ -270,6 +274,15 @@ export default function TafseerPage() {
 
                 {/* Browser header */}
                 <div className="px-4 pt-4 pb-3 border-b border-border/60 bg-primary/5">
+                  {/* Breadcrumb */}
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-2">
+                    <span className="text-primary font-semibold">Tafseer</span>
+                    <ChevronRight className="w-3 h-3" />
+                    <span className="text-foreground font-medium">{selectedSource.name}</span>
+                    <ChevronRight className="w-3 h-3" />
+                    <span>Select a Surah</span>
+                  </div>
+
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div>
                       <p className="text-xs font-semibold text-primary uppercase tracking-widest">
@@ -324,7 +337,7 @@ export default function TafseerPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.15, delay: Math.min(idx * 0.008, 0.2) }}
-                        onClick={() => navigate(`/tafseer/surah/${surah.number}`)}
+                        onClick={() => handleSurahClick(surah.number)}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors duration-100 group"
                       >
                         {/* Number badge */}

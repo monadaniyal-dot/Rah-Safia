@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2,
-  Bookmark as BookmarkIcon, BookmarkCheck, BookMarked,
+  Bookmark as BookmarkIcon, BookmarkCheck, BookMarked, ChevronRight, Eye, EyeOff,
 } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
@@ -11,6 +11,7 @@ import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "
 import { useBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
+import { TAFSEER_SOURCE_MAP } from "@/lib/tafseer-api";
 
 /* ── Skeleton ── */
 function AyahSkeleton({ index }: { index: number }) {
@@ -41,6 +42,8 @@ function AyahCard({
   index,
   bookmarked,
   onToggleBookmark,
+  sourceId,
+  showTafseer,
 }: {
   ayah: AyahWithTranslations;
   surahName: string;
@@ -49,6 +52,8 @@ function AyahCard({
   index: number;
   bookmarked: boolean;
   onToggleBookmark: () => void;
+  sourceId: string;
+  showTafseer: boolean;
 }) {
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
@@ -132,8 +137,13 @@ function AyahCard({
         </AnimatePresence>
       </div>
 
-      {/* Tafseer panel — defaults to Maarif in this context */}
-      <TafseerPanel surahNum={surahNumber} ayahNum={ayah.numberInSurah} defaultSource="maarif" />
+      {/* Tafseer panel */}
+      <TafseerPanel
+        surahNum={surahNumber}
+        ayahNum={ayah.numberInSurah}
+        defaultSource={sourceId}
+        autoOpen={showTafseer}
+      />
     </motion.article>
   );
 }
@@ -142,10 +152,22 @@ function AyahCard({
 export default function TafseerSurahPage() {
   const { number } = useParams<{ number: string }>();
   const [, navigate] = useLocation();
+  const search = useSearch();
+
+  // Parse source from query string e.g. ?source=maarif
+  const sourceId = (() => {
+    const params = new URLSearchParams(search);
+    const s = params.get("source") ?? "maarif";
+    return TAFSEER_SOURCE_MAP[s] ? s : "maarif";
+  })();
+
+  const sourceMeta = TAFSEER_SOURCE_MAP[sourceId];
+
   const [mode, setMode] = useState<TranslationMode>("arabic");
   const [ayahs, setAyahs] = useState<AyahWithTranslations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllTafseer, setShowAllTafseer] = useState(false);
 
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
@@ -192,14 +214,26 @@ export default function TafseerSurahPage() {
             <ArrowLeft className="w-4 h-4 text-foreground" strokeWidth={2} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold text-foreground text-sm leading-tight truncate">{surah.name}</h1>
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground leading-none mb-0.5 flex-wrap">
+              <button
+                onClick={() => navigate("/tafseer")}
+                className="text-primary hover:underline font-semibold"
+              >
+                Tafseer
+              </button>
+              <ChevronRight className="w-2.5 h-2.5 shrink-0" />
+              <span className="text-foreground/70 font-medium truncate max-w-[90px]">
+                {sourceMeta?.name ?? "Tafseer"}
+              </span>
+              <ChevronRight className="w-2.5 h-2.5 shrink-0" />
+              <span className="text-foreground/60 truncate max-w-[80px]">{surah.name}</span>
+            </div>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground leading-tight">
-                Surah {surahNum} · {isLoading ? "…" : `${ayahs.length} of ${surah.verses}`} verses · {surah.type}
-              </p>
+              <h1 className="font-semibold text-foreground text-sm leading-tight truncate">{surah.name}</h1>
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary flex items-center gap-1 shrink-0">
                 <BookMarked className="w-2.5 h-2.5" strokeWidth={2} />
-                Tafseer
+                {sourceMeta?.name ?? "Tafseer"}
               </span>
             </div>
           </div>
@@ -233,7 +267,7 @@ export default function TafseerSurahPage() {
                 <p className="text-white/60 text-xs mt-1">{surah.verses} Ayahs</p>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between flex-wrap gap-2">
               <div className="flex gap-4 text-xs text-white/60">
                 <span>Surah #{surahNum}</span>
                 <span>Page {surah.page}</span>
@@ -241,36 +275,66 @@ export default function TafseerSurahPage() {
               </div>
               <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/20 text-white flex items-center gap-1">
                 <BookMarked className="w-2.5 h-2.5" strokeWidth={2} />
-                Maarif-ul-Quran
+                {sourceMeta?.name ?? "Tafseer"}
               </span>
             </div>
           </div>
         </motion.div>
 
-        {/* Translation selector */}
+        {/* Controls row: Translation + Show All Tafseer toggle */}
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="mb-6 rounded-2xl border border-border bg-card p-4 shadow-sm"
+          className="mb-6 space-y-3"
         >
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Translation</p>
-          <div className="grid grid-cols-2 gap-2">
-            {TRANSLATION_MODES.map((tm) => (
-              <button
-                key={tm.id}
-                onClick={() => setMode(tm.id)}
-                className={cn(
-                  "px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all duration-200 border",
-                  mode === tm.id
-                    ? "gradient-primary text-white border-primary/30 shadow-sm"
-                    : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground hover:bg-accent"
-                )}
-              >
-                {tm.label}
-              </button>
-            ))}
+          {/* Translation selector */}
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Translation</p>
+            <div className="grid grid-cols-2 gap-2">
+              {TRANSLATION_MODES.map((tm) => (
+                <button
+                  key={tm.id}
+                  onClick={() => setMode(tm.id)}
+                  className={cn(
+                    "px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all duration-200 border",
+                    mode === tm.id
+                      ? "gradient-primary text-white border-primary/30 shadow-sm"
+                      : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  {tm.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Show all tafseer toggle */}
+          <button
+            onClick={() => setShowAllTafseer((v) => !v)}
+            className={cn(
+              "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border text-sm font-semibold transition-all duration-200 shadow-sm",
+              showAllTafseer
+                ? "gradient-primary text-white border-primary/30"
+                : "bg-card border-primary/20 text-primary hover:bg-primary/5"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <BookMarked className="w-4 h-4" strokeWidth={2} />
+              <span>{showAllTafseer ? "Hide All Tafseer" : "Show Tafseer for All Ayahs"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {showAllTafseer
+                ? <EyeOff className="w-4 h-4 opacity-80" strokeWidth={2} />
+                : <Eye className="w-4 h-4 opacity-70" strokeWidth={2} />}
+              <span className={cn(
+                "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                showAllTafseer ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+              )}>
+                {sourceMeta?.name ?? "Tafseer"}
+              </span>
+            </div>
+          </button>
         </motion.div>
 
         {/* Bismillah banner */}
@@ -358,6 +422,8 @@ export default function TafseerSurahPage() {
                       arabicText: ayah.arabic,
                     })
                   }
+                  sourceId={sourceId}
+                  showTafseer={showAllTafseer}
                 />
               ))}
             </div>
@@ -372,7 +438,7 @@ export default function TafseerSurahPage() {
               <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
                 Arabic: Uthmani · English: Sahih International · Urdu: Jalandhri
                 <br />
-                Tafseer: Maarif-ul-Quran by Mufti Muhammad Shafi ·{" "}
+                Tafseer: {sourceMeta?.name ?? "Maarif-ul-Quran"} by {sourceMeta?.author ?? "Mufti Muhammad Shafi"} ·{" "}
                 <span className="text-muted-foreground/60">via Quran.com</span>
               </p>
             </motion.div>
