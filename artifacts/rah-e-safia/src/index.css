@@ -107,4 +107,37 @@
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(145 56% 30%) 100%);
   }
+
+  /* ── Tafseer prose — renders HTML from quran.com API ── */
+  .tafseer-prose p {
+    margin-bottom: 0.75rem;
+    line-height: 1.75;
+    font-size: 0.8125rem;
+    color: hsl(var(--foreground) / 0.82);
+  }
+  .tafseer-prose p:last-child {
+    margin-bottom: 0;
+  }
+  .tafseer-prose h2 {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    margin-top: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  .tafseer-prose h3 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(var(--foreground) / 0.9);
+    margin-top: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+  .tafseer-prose strong {
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+  .tafseer-prose em {
+    font-style: italic;
+    color: hsl(var(--foreground) / 0.75);
+  }
 }

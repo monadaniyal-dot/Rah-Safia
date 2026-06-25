@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookMarked, ChevronDown, ChevronUp, Loader2, AlertCircle, Clock } from "lucide-react";
+import { BookMarked, ChevronDown, ChevronUp, Loader2, AlertCircle, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   TAFSEER_SOURCES,
@@ -13,12 +13,18 @@ interface TafseerPanelProps {
   ayahNum: number;
 }
 
+/** Strip any <script>/<style> tags from quran.com HTML for safety */
+function sanitize(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+}
+
 export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
   const [open, setOpen] = useState(false);
   const [sourceId, setSourceId] = useState(TAFSEER_SOURCES[0].id);
   const [result, setResult] = useState<TafseerResult | null>(null);
   const [loading, setLoading] = useState(false);
-  // Cache per source so switching sources doesn't refetch
   const [cache, setCache] = useState<Record<string, TafseerResult>>({});
 
   const load = useCallback(
@@ -94,17 +100,18 @@ export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
                     <button
                       key={src.id}
                       onClick={() => handleSourceChange(src.id)}
+                      title={src.status === "coming-soon" ? "Coming soon — dataset needed" : undefined}
                       className={cn(
-                        "text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all duration-150",
+                        "text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all duration-150 flex items-center gap-1",
                         sourceId === src.id
                           ? "gradient-primary text-white border-primary/30 shadow-sm"
                           : "bg-secondary/80 text-muted-foreground border-border hover:text-foreground",
-                        src.status === "coming-soon" && sourceId !== src.id && "opacity-60"
+                        src.status === "coming-soon" && sourceId !== src.id && "opacity-55"
                       )}
                     >
                       {src.name}
-                      {src.status === "coming-soon" && (
-                        <span className="ml-1 opacity-70">·</span>
+                      {src.status === "available" && sourceId !== src.id && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                       )}
                     </button>
                   ))}
@@ -112,78 +119,97 @@ export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
               </div>
 
               {/* Content area */}
-              <div className="rounded-xl border border-border bg-card p-3 min-h-[64px] flex flex-col justify-center">
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+                {/* Loading */}
                 {loading && (
-                  <div className="flex items-center gap-2 text-muted-foreground py-2">
+                  <div className="flex items-center gap-2 text-muted-foreground p-4">
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                     <span className="text-xs">Loading tafseer…</span>
                   </div>
                 )}
 
+                {/* ── Real tafseer text (HTML from quran.com) ── */}
                 {!loading && result?.kind === "text" && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-[10px] font-semibold text-primary/70 uppercase tracking-widest">
-                        {result.source.name}
+                    {/* Source header */}
+                    <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-border/60 bg-secondary/30">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">
+                          {result.source.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {result.source.author}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        Live
                       </span>
-                      <span className="text-[10px] text-muted-foreground/50">·</span>
-                      <span className="text-[10px] text-muted-foreground">{result.source.author}</span>
                     </div>
-                    <p
-                      className={cn(
-                        "text-sm text-foreground/85 leading-relaxed",
-                        result.source.lang === "urdu" && "font-arabic text-right text-base leading-[2]"
-                      )}
-                      dir={result.source.lang === "urdu" ? "rtl" : "ltr"}
-                      lang={result.source.lang === "urdu" ? "ur" : "en"}
-                    >
-                      {result.text}
-                    </p>
+
+                    {/* Tafseer prose */}
+                    <div
+                      className="tafseer-prose px-4 py-3 text-sm text-foreground/85 leading-relaxed max-h-[420px] overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: sanitize(result.text) }}
+                    />
+
+                    {/* Attribution */}
+                    <div className="px-4 py-2 border-t border-border/40 bg-secondary/20">
+                      <p className="text-[10px] text-muted-foreground/60">
+                        {result.source.name} · {result.source.author} · via Quran.com
+                      </p>
+                    </div>
                   </motion.div>
                 )}
 
+                {/* Coming soon */}
                 {!loading && result?.kind === "unavailable" && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="space-y-2"
+                    className="p-4 space-y-2"
                   >
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-amber-500 shrink-0" />
                       <p className="text-xs font-semibold text-foreground">
-                        {result.source.name} — Coming Soon
+                        {result.source.name} — Not yet available
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {result.source.dataNote}
                     </p>
                     <div className="flex items-center gap-2 pt-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                       <p className="text-[10px] text-muted-foreground">
-                        Try <strong>Tafhim-ul-Quran</strong> — available now via AlQuran.cloud
+                        Try <strong>Maarif-ul-Quran</strong> — available now with full commentary
                       </p>
                     </div>
                   </motion.div>
                 )}
 
+                {/* Error */}
                 {!loading && result?.kind === "error" && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-start gap-2"
+                    className="p-4 flex items-start gap-2"
                   >
                     <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-medium text-destructive">Could not load tafseer</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{result.message}</p>
                       <button
-                        onClick={() => load(sourceId)}
-                        className="text-xs text-primary hover:underline mt-1"
+                        onClick={() => {
+                          setCache((prev) => { const n = { ...prev }; delete n[sourceId]; return n; });
+                          load(sourceId);
+                        }}
+                        className="flex items-center gap-1 text-xs text-primary hover:underline mt-2"
                       >
+                        <RefreshCw className="w-3 h-3" strokeWidth={2} />
                         Retry
                       </button>
                     </div>
@@ -191,16 +217,9 @@ export default function TafseerPanel({ surahNum, ayahNum }: TafseerPanelProps) {
                 )}
 
                 {!loading && !result && (
-                  <p className="text-xs text-muted-foreground text-center py-2">Select a source above</p>
+                  <p className="text-xs text-muted-foreground text-center p-4">Select a source above</p>
                 )}
               </div>
-
-              {/* Attribution */}
-              {result?.kind === "text" && (
-                <p className="text-[10px] text-muted-foreground/50 mt-1.5 text-right">
-                  via AlQuran.cloud · {result.source.name}
-                </p>
-              )}
             </div>
           </motion.div>
         )}

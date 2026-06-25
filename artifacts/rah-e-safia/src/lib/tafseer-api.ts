@@ -1,11 +1,12 @@
 // ─── Tafseer Registry & Fetching Architecture ─────────────────────────────────
 //
 // Design principles:
-//  1. Each TafseerSource declares its API availability up front.
-//  2. Available sources are fetched from AlQuran.cloud using their edition string.
+//  1. Each TafseerSource declares its data provider up front.
+//  2. "qurancom" sources fetch from api.quran.com/api/v4 using a numeric tafsir ID.
 //  3. Coming-soon sources return a structured "unavailable" result with guidance.
 //  4. Results are cached per (surahNum:ayahNum:sourceId) to avoid re-fetching.
 //  5. Adding a new source = one entry in TAFSEER_SOURCES. Nothing else changes.
+//  6. Text from quran.com is HTML (<p>, <h2>). The UI layer handles rendering.
 
 export type TafseerStatus = "available" | "coming-soon";
 export type TafseerLang = "urdu" | "english" | "arabic";
@@ -18,14 +19,15 @@ export interface TafseerSource {
   authorUrdu: string;
   lang: TafseerLang;
   description: string;
-  /** AlQuran.cloud edition identifier, or null if no public API exists */
-  apiEdition: string | null;
+  /** quran.com v4 tafsir ID, or null if not available via any free API */
+  qurancomId: number | null;
   status: TafseerStatus;
   /** Explains what dataset / work is needed to make this source live */
   dataNote: string;
 }
 
 // ─── Source registry ──────────────────────────────────────────────────────────
+// To add a new source: add one entry here. No other code changes needed.
 
 export const TAFSEER_SOURCES: TafseerSource[] = [
   {
@@ -34,12 +36,12 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     urduName: "معارف القرآن",
     author: "Mufti Muhammad Shafi",
     authorUrdu: "مفتی محمد شفیع",
-    lang: "urdu",
-    description: "The definitive 8-volume Urdu Tafseer — the standard scholarly reference across South Asia.",
-    apiEdition: null,
-    status: "coming-soon",
-    dataNote:
-      "No public API currently exposes Maarif-ul-Quran. Requires a digitized Urdu plaintext dataset of all 8 volumes, then a local JSON lookup or a custom backend endpoint.",
+    lang: "english",
+    description:
+      "The authoritative 8-volume Tafseer by Mufti Muhammad Shafi — available in English via Quran.com.",
+    qurancomId: 168,
+    status: "available",
+    dataNote: "",
   },
   {
     id: "tafhim",
@@ -47,11 +49,12 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     urduName: "تفہیم القرآن",
     author: "Syed Abul Ala Maududi",
     authorUrdu: "سید ابوالاعلیٰ مودودی",
-    lang: "english",
-    description: "Maududi's landmark modern Tafseer — available in English via AlQuran.cloud.",
-    apiEdition: "en.maududi",
-    status: "available",
-    dataNote: "",
+    lang: "urdu",
+    description: "Maududi's landmark 6-volume modern Tafseer in Urdu.",
+    qurancomId: null,
+    status: "coming-soon",
+    dataNote:
+      "The AlQuran.cloud 'en.maududi' edition is only a short English translation, not Maududi's tafseer commentary. The actual Tafhim-ul-Quran requires a dedicated digitized Urdu/English dataset — no free API currently provides it.",
   },
   {
     id: "usmani",
@@ -61,10 +64,10 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     authorUrdu: "شبیر احمد عثمانی",
     lang: "urdu",
     description: "Concise yet profound Urdu Tafseer widely used in South Asian madrasas.",
-    apiEdition: null,
+    qurancomId: null,
     status: "coming-soon",
     dataNote:
-      "Available only in print. Requires a digitized Urdu plaintext dataset of Tafsir Usmani and a serving endpoint.",
+      "Available in print only. Requires a digitized Urdu plaintext dataset and a serving endpoint. No free API currently available.",
   },
   {
     id: "mazhari",
@@ -73,8 +76,8 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     author: "Qadi Sanaullah Panipati",
     authorUrdu: "قاضی ثناء اللہ پانی پتی",
     lang: "urdu",
-    description: "Classical 13-volume Tafseer written in Arabic, with renowned Urdu translations available.",
-    apiEdition: null,
+    description: "Classical 13-volume Tafseer with renowned Urdu translations available.",
+    qurancomId: null,
     status: "coming-soon",
     dataNote:
       "No API available. Requires digitized Arabic or Urdu text of Tafsir Mazhari (13 volumes) and a custom backend.",
@@ -86,8 +89,8 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     author: "Pir Muhammad Karam Shah Al-Azhari",
     authorUrdu: "پیر محمد کرم شاہ الازہری",
     lang: "urdu",
-    description: "A 5-volume modern Urdu Tafseer renowned for its eloquent style and breadth.",
-    apiEdition: null,
+    description: "Modern 5-volume Urdu Tafseer renowned for its eloquent style.",
+    qurancomId: null,
     status: "coming-soon",
     dataNote:
       "No public API. Requires a digitized Urdu plaintext of Tafsir Zia-ul-Quran (5 volumes) and a backend lookup.",
@@ -100,7 +103,7 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     authorUrdu: "امام احمد رضا خان",
     lang: "urdu",
     description: "Urdu Tafseer notes on Kanz-ul-Iman — widely respected in the Barelvi tradition.",
-    apiEdition: null,
+    qurancomId: null,
     status: "coming-soon",
     dataNote:
       "No standalone API. Requires digitized Urdu text of Khazain-ul-Irfan and a custom serving endpoint.",
@@ -114,7 +117,7 @@ export const TAFSEER_SOURCE_MAP = Object.fromEntries(
 // ─── Result types ─────────────────────────────────────────────────────────────
 
 export type TafseerResult =
-  | { kind: "text"; text: string; source: TafseerSource }
+  | { kind: "text"; text: string; isHtml: boolean; source: TafseerSource }
   | { kind: "unavailable"; source: TafseerSource }
   | { kind: "error"; message: string; source: TafseerSource };
 
@@ -138,11 +141,15 @@ export async function fetchTafseer(
 ): Promise<TafseerResult> {
   const source = TAFSEER_SOURCE_MAP[sourceId];
   if (!source) {
-    return { kind: "error", message: `Unknown tafseer source "${sourceId}"`, source: TAFSEER_SOURCES[0] };
+    return {
+      kind: "error",
+      message: `Unknown tafseer source "${sourceId}"`,
+      source: TAFSEER_SOURCES[0],
+    };
   }
 
-  // Not yet wired to an API
-  if (!source.apiEdition) {
+  // Source not yet wired to any API
+  if (!source.qurancomId) {
     return { kind: "unavailable", source };
   }
 
@@ -151,14 +158,15 @@ export async function fetchTafseer(
 
   try {
     const res = await fetch(
-      `https://api.alquran.cloud/v1/ayah/${surahNum}:${ayahNum}/${source.apiEdition}`
+      `https://api.quran.com/api/v4/tafsirs/${source.qurancomId}/by_ayah/${surahNum}:${ayahNum}?language=en`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    if (json.code !== 200 || !json.data?.text) {
-      throw new Error(json.status ?? "Unexpected API response");
-    }
-    const result: TafseerResult = { kind: "text", text: json.data.text as string, source };
+
+    const text: string = json?.tafsir?.text;
+    if (!text) throw new Error("No tafseer text returned from API");
+
+    const result: TafseerResult = { kind: "text", text, isHtml: true, source };
     cache.set(cacheKey, result);
     return result;
   } catch (err) {
