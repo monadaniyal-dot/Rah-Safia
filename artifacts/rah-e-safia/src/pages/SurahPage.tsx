@@ -216,7 +216,16 @@ export default function SurahPage() {
     );
   }
 
+  // Surah 1 (Al-Fatiha): Bismillah IS verse 1 — show all ayahs, no banner.
+  // Surah 9 (At-Tawbah): begins without Bismillah — no banner, show all ayahs.
+  // All others (2–114 except 9): show decorative banner, skip API ayah 1 (duplicate Bismillah).
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
+
+  // When the banner is shown the API still returns Bismillah as ayah 1 —
+  // filter it out so it doesn't duplicate the decorative header above.
+  const displayedAyahs = showBismillahBanner
+    ? ayahs.filter((a) => a.numberInSurah !== 1)
+    : ayahs;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -239,7 +248,7 @@ export default function SurahPage() {
             </h1>
             <p className="text-xs text-muted-foreground leading-tight">
               Surah {surahNum} ·{" "}
-              {isLoading ? "…" : `${ayahs.length} of ${surah.verses}`} verses · {surah.type}
+              {isLoading ? "…" : surah.verses} verses · {surah.type}
             </p>
           </div>
           <p className="font-arabic text-lg text-foreground shrink-0" dir="rtl">
@@ -379,10 +388,10 @@ export default function SurahPage() {
         )}
 
         {/* ── Ayah list ── */}
-        {!isLoading && !error && ayahs.length > 0 && (
+        {!isLoading && !error && displayedAyahs.length > 0 && (
           <>
             <div className="space-y-4">
-              {ayahs.map((ayah, idx) => (
+              {displayedAyahs.map((ayah, idx) => (
                 <AyahCard
                   key={ayah.number}
                   ayah={ayah}
