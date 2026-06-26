@@ -218,13 +218,31 @@ export default function SurahPage() {
 
   // Surah 1 (Al-Fatiha): Bismillah IS verse 1 — show all ayahs, no banner.
   // Surah 9 (At-Tawbah): begins without Bismillah — no banner, show all ayahs.
-  // All others (2–114 except 9): show decorative banner, skip API ayah 1 (duplicate Bismillah).
+  // All others (2–114 except 9): show decorative banner; the API prepends the
+  // Bismillah text directly onto ayah 1's Arabic string (it is NOT a separate
+  // numbered ayah — the total count already matches the official Quran count).
+  // Correct fix: strip the Bismillah prefix from ayah 1's text; never remove the ayah.
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
 
-  // When the banner is shown the API still returns Bismillah as ayah 1 —
-  // filter it out so it doesn't duplicate the decorative header above.
+  // Diacritic-order-agnostic regex: matches each consonant of the Bismillah followed
+  // by zero or more Arabic diacritics (U+064B–U+0652, U+0670) in any order.
+  // This is necessary because the API encodes shadda+fatha as 0651+064e, while a
+  // typed Arabic literal in source code may store them in the opposite order (064e+0651),
+  // causing a literal regex to silently fail despite visually looking identical.
+  const D = "[\\u064B-\\u0652\\u0670]*";
+  const A = "[\\u0671\\u0627]"; // alef (U+0627) or alef-wasla (U+0671)
+  const BISMILLAH_PREFIX_RE = new RegExp(
+    "^\\u0628" + D + "\\u0633" + D + "\\u0645" + D + "\\s+" +   // بسم
+    A + D + "\\u0644" + D + "\\u0644" + D + "\\u0647" + D + "\\s+" +  // الله
+    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u0645" + D + "\\u0646" + D + "\\s+" + // الرحمن
+    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u064A" + D + "\\u0645" + D + "\\s*", // الرحيم
+    "u"
+  );
+
   const displayedAyahs = showBismillahBanner
-    ? ayahs.filter((a) => a.numberInSurah !== 1)
+    ? ayahs.map((a, idx) =>
+        idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
+      )
     : ayahs;
 
   return (

@@ -206,10 +206,18 @@ export default function TafseerSurahPage() {
     );
   }
 
-  // Surah 1: Bismillah IS verse 1. Surah 9: no Bismillah. All others: banner shown, filter API ayah 1.
+  // Surah 1 (Al-Fatiha): Bismillah IS verse 1 — no banner, show all ayahs.
+  // Surah 9 (At-Tawbah): no Bismillah — no banner, show all ayahs.
+  // All others: show decorative banner; the API prepends Bismillah text onto ayah 1's
+  // Arabic string (it is NOT a separate numbered ayah). Strip the prefix, never remove the ayah.
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
+
+  const BISMILLAH_PREFIX_RE = /^بِسْمِ\s+[\u0671\u0627]للَّهِ\s+[\u0671\u0627]لرَّحْمَٰنِ\s+[\u0671\u0627]لرَّحِيمِ\s*/u;
+
   const displayedAyahs = showBismillahBanner
-    ? ayahs.filter((a) => a.numberInSurah !== 1)
+    ? ayahs.map((a, idx) =>
+        idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
+      )
     : ayahs;
 
   return (
