@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import FeatureCard from "@/components/ui/FeatureCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import DailyInspiration from "@/components/ui/DailyInspiration";
+import DualDateDisplay from "@/components/ui/DualDateDisplay";
 import { featureCards } from "@/lib/constants";
 import { useReadingProgress, relativeTime, type ProgressEntry } from "@/lib/reading-progress";
 
@@ -158,6 +159,9 @@ export default function HomePage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Dual Date Display */}
+        <DualDateDisplay />
 
         {/* Daily Inspiration */}
         <DailyInspiration />
