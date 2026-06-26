@@ -304,8 +304,8 @@ export default function PrayerTimesPage() {
     setState({ status: "locating" });
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const lat = pos.coords.lat ?? pos.coords.latitude;
-        const lon = pos.coords.lng ?? pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
         // Reverse-geocode to get the real neighbourhood/city name
         const cityName = await reverseGeocode(lat, lon);
         await loadFromLocation({ lat, lon, cityName });

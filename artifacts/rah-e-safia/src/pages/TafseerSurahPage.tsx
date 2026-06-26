@@ -206,7 +206,11 @@ export default function TafseerSurahPage() {
     );
   }
 
+  // Surah 1: Bismillah IS verse 1. Surah 9: no Bismillah. All others: banner shown, filter API ayah 1.
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
+  const displayedAyahs = showBismillahBanner
+    ? ayahs.filter((a) => a.numberInSurah !== 1)
+    : ayahs;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -409,10 +413,10 @@ export default function TafseerSurahPage() {
         )}
 
         {/* Ayah list */}
-        {!isLoading && !error && ayahs.length > 0 && (
+        {!isLoading && !error && displayedAyahs.length > 0 && (
           <>
             <div className="space-y-4">
-              {ayahs.map((ayah, idx) => (
+              {displayedAyahs.map((ayah, idx) => (
                 <AyahCard
                   key={ayah.number}
                   ayah={ayah}
