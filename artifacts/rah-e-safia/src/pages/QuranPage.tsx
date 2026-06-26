@@ -126,20 +126,36 @@ export default function QuranPage() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2, delay: Math.min(idx * 0.012, 0.3) }}
                   onClick={() => navigate(`/quran/${surah.number}`)}
-                  className="w-full flex items-center gap-4 py-3 text-left group hover:bg-secondary/50 rounded-xl px-2 -mx-2 transition-colors duration-150"
+                  className="w-full flex items-center gap-4 py-4 text-left group hover:bg-secondary/50 rounded-xl px-3 -mx-3 transition-colors duration-150"
                 >
                   {/* Surah number badge */}
-                  <div className="shrink-0 w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-sm">
+                  <div className="shrink-0 w-11 h-11 rounded-xl gradient-primary flex items-center justify-center shadow-sm">
                     <span className="text-white text-xs font-bold">{surah.number}</span>
                   </div>
 
-                  {/* Names */}
+                  {/* Names — three-tier hierarchy */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-foreground">{surah.name}</span>
+                    {/* Tier 1: Arabic name — highest emphasis */}
+                    <p
+                      className="font-arabic text-foreground leading-snug font-bold truncate"
+                      dir="rtl"
+                      style={{ fontSize: "clamp(1.1rem, 3.5vw, 1.35rem)" }}
+                    >
+                      {surah.arabicName}
+                    </p>
+
+                    {/* Tier 2: English transliteration — second emphasis */}
+                    <p className="text-sm font-bold text-foreground/85 mt-0.5 leading-tight">
+                      {surah.name}
+                    </p>
+
+                    {/* Tier 3: Meaning + metadata — smallest, muted */}
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-xs text-muted-foreground">{surah.englishName}</span>
+                      <span className="text-muted-foreground/40 text-xs">·</span>
                       <span
                         className={cn(
-                          "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                          "text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none",
                           surah.type === "Meccan"
                             ? "bg-primary/10 text-primary"
                             : "bg-gold-muted text-gold"
@@ -147,25 +163,16 @@ export default function QuranPage() {
                       >
                         {surah.type}
                       </span>
+                      <span className="text-muted-foreground/40 text-xs">·</span>
+                      <span className="text-[11px] text-muted-foreground">{surah.verses} verses</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{surah.englishName}</p>
                   </div>
 
-                  {/* Arabic name + verse count */}
-                  <div className="shrink-0 text-right flex items-center gap-3">
-                    <div className="hidden sm:block">
-                      <p className="font-arabic text-base text-foreground leading-none" dir="rtl">
-                        {surah.arabicName}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {surah.verses} verses
-                      </p>
-                    </div>
-                    <ChevronRight
-                      className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150"
-                      strokeWidth={2}
-                    />
-                  </div>
+                  {/* Chevron */}
+                  <ChevronRight
+                    className="shrink-0 w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150"
+                    strokeWidth={2}
+                  />
                 </motion.button>
               ))}
             </div>
