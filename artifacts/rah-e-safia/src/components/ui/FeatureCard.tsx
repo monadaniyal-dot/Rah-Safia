@@ -17,12 +17,19 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08, ease: "easeOut" }}
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{
+        y: -2,
+        transition: { type: "spring", stiffness: 380, damping: 28 },
+      }}
+      whileTap={{
+        scale: 0.965,
+        transition: { duration: 0.1, ease: "easeIn" },
+      }}
       onClick={onClick}
       className={cn(
         "group relative w-full text-left rounded-2xl overflow-hidden",
-        "bg-gradient-to-br text-white shadow-md hover:shadow-xl",
+        "bg-gradient-to-br text-white",
+        "shadow-[0_2px_12px_rgba(0,0,0,0.18)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.28)]",
         "transition-shadow duration-300 cursor-pointer",
         card.colorClass
       )}
@@ -33,51 +40,69 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
         aria-hidden="true"
       />
 
-      {/* Shine overlay on hover */}
+      {/* Shine sweep on hover */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         style={{
           background:
-            "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)",
+            "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 55%)",
         }}
         aria-hidden="true"
       />
 
-      <div className="relative p-5 flex items-center gap-4">
-        {/* Icon container — tighter padding so icon feels more prominent */}
+      <div className="relative px-5 py-4 flex items-center gap-4">
+
+        {/* ── Icon container ──────────────────────────────────────── */}
         <div
           className={cn(
-            "shrink-0 w-12 h-12 rounded-xl flex items-center justify-center",
-            "bg-white/15 backdrop-blur-sm border border-white/20",
-            "group-hover:bg-white/20 transition-colors duration-300"
+            "shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center",
+            "bg-white/15 border border-white/20",
+            "group-hover:bg-white/22 transition-colors duration-200"
           )}
         >
-          <Icon className="w-8 h-8 text-white" strokeWidth={2} />
+          <Icon
+            className="w-[1.65rem] h-[1.65rem] text-white"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
         </div>
 
-        {/* Text content */}
+        {/* ── Text block ──────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          {/* Arabic title — equal weight to English */}
+
+          {/* Arabic title — same visual size as English */}
           <p
-            className="font-arabic font-semibold text-white/95 text-right leading-snug mb-0.5"
+            className="font-arabic font-bold text-white text-right truncate"
             dir="rtl"
-            style={{ fontSize: "1.05rem" }}
+            style={{ fontSize: "1.2rem", lineHeight: 1.75 }}
           >
             {card.arabicTitle}
           </p>
-          {/* English title — 15–20% larger, bold */}
-          <h3 className="text-xl font-bold text-white leading-tight">
+
+          {/* English title — matched to Arabic at 1.2rem */}
+          <h3
+            className="font-bold text-white leading-tight -mt-0.5"
+            style={{ fontSize: "1.2rem" }}
+          >
             {card.title}
           </h3>
+
           {/* Description — clearly secondary */}
-          <p className="text-xs text-white/55 mt-1 leading-snug line-clamp-2">
+          <p
+            className="text-white/52 leading-snug line-clamp-2 mt-1.5"
+            style={{ fontSize: "0.78rem" }}
+          >
             {card.description}
           </p>
         </div>
 
-        {/* Arrow */}
+        {/* ── Chevron ─────────────────────────────────────────────── */}
         <ChevronRight
-          className="shrink-0 w-5 h-5 text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all duration-200"
+          className={cn(
+            "shrink-0 w-[1.1rem] h-[1.1rem] text-white/55",
+            "group-hover:text-white group-hover:translate-x-1 group-hover:scale-110",
+            "transition-all duration-200"
+          )}
           strokeWidth={2.5}
         />
       </div>
