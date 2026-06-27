@@ -137,12 +137,21 @@ export default function HomePage() {
                       Your Islamic Companion
                     </span>
                   </div>
-                  <h2 className="text-xl lg:text-2xl font-bold text-white mb-1 leading-tight">
-                    Assalamu Alaikum
-                  </h2>
-                  <p className="font-arabic text-lg text-white/80 leading-relaxed" dir="rtl">
+                  {/* Arabic — primary visual element */}
+                  <p
+                    className="font-arabic text-white font-bold leading-loose mb-1"
+                    dir="rtl"
+                    style={{
+                      fontSize: "clamp(1.55rem, 5.5vw, 2.2rem)",
+                      textShadow: "0 1px 12px rgba(0,0,0,0.25)",
+                    }}
+                  >
                     اَلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللهِ
                   </p>
+                  {/* English — secondary subtitle */}
+                  <h2 className="text-sm lg:text-base font-medium text-white/65 leading-snug tracking-wide">
+                    Assalamu Alaikum
+                  </h2>
                 </div>
                 <div className="text-5xl shrink-0 opacity-90">🕌</div>
               </div>
