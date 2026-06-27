@@ -44,29 +44,33 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
       />
 
       <div className="relative p-5 flex items-center gap-4">
-        {/* Icon container */}
+        {/* Icon container — tighter padding so icon feels more prominent */}
         <div
           className={cn(
-            "shrink-0 w-14 h-14 rounded-xl flex items-center justify-center",
+            "shrink-0 w-12 h-12 rounded-xl flex items-center justify-center",
             "bg-white/15 backdrop-blur-sm border border-white/20",
             "group-hover:bg-white/20 transition-colors duration-300"
           )}
         >
-          <Icon className="w-7 h-7 text-white" strokeWidth={1.6} />
+          <Icon className="w-8 h-8 text-white" strokeWidth={2} />
         </div>
 
         {/* Text content */}
         <div className="flex-1 min-w-0">
+          {/* Arabic title — equal weight to English */}
           <p
-            className="font-arabic text-base text-white/80 leading-none mb-1 text-right"
+            className="font-arabic font-semibold text-white/95 text-right leading-snug mb-0.5"
             dir="rtl"
+            style={{ fontSize: "1.05rem" }}
           >
             {card.arabicTitle}
           </p>
-          <h3 className="text-lg font-semibold text-white leading-tight">
+          {/* English title — 15–20% larger, bold */}
+          <h3 className="text-xl font-bold text-white leading-tight">
             {card.title}
           </h3>
-          <p className="text-sm text-white/70 mt-0.5 leading-snug line-clamp-2">
+          {/* Description — clearly secondary */}
+          <p className="text-xs text-white/55 mt-1 leading-snug line-clamp-2">
             {card.description}
           </p>
         </div>
@@ -74,7 +78,7 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
         {/* Arrow */}
         <ChevronRight
           className="shrink-0 w-5 h-5 text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all duration-200"
-          strokeWidth={2}
+          strokeWidth={2.5}
         />
       </div>
     </motion.button>
