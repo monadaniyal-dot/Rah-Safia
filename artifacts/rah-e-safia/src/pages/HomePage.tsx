@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Sparkles, BookOpen, BookMarked, ArrowRight, Clock } from "lucide-react";
+import { Heart, Sparkles, BookOpen, BookMarked, ArrowRight, Clock, Timer } from "lucide-react";
 import { useLocation } from "wouter";
 import FeatureCard from "@/components/ui/FeatureCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -7,6 +7,43 @@ import DailyInspiration from "@/components/ui/DailyInspiration";
 import DualDateDisplay from "@/components/ui/DualDateDisplay";
 import { featureCards } from "@/lib/constants";
 import { useReadingProgress, relativeTime, type ProgressEntry } from "@/lib/reading-progress";
+import { usePrayerCountdown, type PrayerCountdown } from "@/hooks/usePrayerCountdown";
+import { cn } from "@/lib/utils";
+
+// ─── Prayer countdown badge ────────────────────────────────────────────────────
+function formatMinutes(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function PrayerBadge({ countdown }: { countdown: PrayerCountdown }) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5",
+        "border transition-colors duration-300",
+        countdown.isUrgent
+          ? "bg-white/20 border-white/35 text-yellow-100"
+          : "bg-white/10 border-white/20 text-white/75"
+      )}
+      style={{ fontSize: "0.7rem" }}
+    >
+      <Timer
+        className={cn("w-2.5 h-2.5 shrink-0", countdown.isUrgent && "text-yellow-200")}
+        strokeWidth={2.5}
+      />
+      <span className="font-medium">
+        {countdown.name}
+      </span>
+      <span className={cn("opacity-60", countdown.isUrgent && "opacity-80")}>·</span>
+      <span className={cn("font-semibold", countdown.isUrgent && "text-yellow-100")}>
+        {formatMinutes(countdown.minutesLeft)}
+      </span>
+    </div>
+  );
+}
 
 // ─── Continue Reading card ────────────────────────────────────────────────────
 function ProgressCard({
@@ -65,6 +102,7 @@ export default function HomePage() {
   const [, navigate] = useLocation();
   const progress = useReadingProgress();
   const hasProgress = !!(progress.quran || progress.tafseer);
+  const prayerCountdown = usePrayerCountdown();
 
   return (
     <div className="min-h-full flex flex-col">
@@ -137,21 +175,16 @@ export default function HomePage() {
                       Your Islamic Companion
                     </span>
                   </div>
-                  {/* English greeting */}
                   <h2
                     className="text-white font-bold leading-tight"
                     style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)" }}
                   >
                     Assalamu Alaikum
                   </h2>
-                  {/* Arabic greeting — same visual weight */}
                   <p
                     className="font-arabic text-white font-bold mt-1"
                     dir="rtl"
-                    style={{
-                      fontSize: "clamp(1.1rem, 4vw, 1.4rem)",
-                      lineHeight: 1.9,
-                    }}
+                    style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)", lineHeight: 1.9 }}
                   >
                     اَلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللهِ
                   </p>
@@ -242,6 +275,11 @@ export default function HomePage() {
               card={card}
               index={index}
               onClick={() => navigate(card.path)}
+              badge={
+                card.id === "prayer" && prayerCountdown ? (
+                  <PrayerBadge countdown={prayerCountdown} />
+                ) : undefined
+              }
             />
           ))}
         </div>

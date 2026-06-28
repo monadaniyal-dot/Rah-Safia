@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -7,9 +8,11 @@ interface FeatureCardProps {
   card: FeatureCardType;
   index: number;
   onClick?: () => void;
+  /** Optional badge rendered below the description — used for the Prayer Times countdown. */
+  badge?: ReactNode;
 }
 
-export default function FeatureCard({ card, index, onClick }: FeatureCardProps) {
+export default function FeatureCard({ card, index, onClick, badge }: FeatureCardProps) {
   const Icon = card.icon;
 
   return (
@@ -35,18 +38,12 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
       )}
     >
       {/* Islamic geometric pattern overlay */}
-      <div
-        className="absolute inset-0 islamic-pattern opacity-100"
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 islamic-pattern opacity-100" aria-hidden="true" />
 
       {/* Shine sweep on hover */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 55%)",
-        }}
+        style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 55%)" }}
         aria-hidden="true"
       />
 
@@ -60,17 +57,12 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
             "group-hover:bg-white/22 transition-colors duration-200"
           )}
         >
-          <Icon
-            className="w-[1.65rem] h-[1.65rem] text-white"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <Icon className="w-[1.65rem] h-[1.65rem] text-white" strokeWidth={2} aria-hidden="true" />
         </div>
 
         {/* ── Text block ──────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
-
-          {/* Arabic title — same visual size as English */}
+          {/* Arabic title */}
           <p
             className="font-arabic font-bold text-white text-right truncate"
             dir="rtl"
@@ -79,21 +71,18 @@ export default function FeatureCard({ card, index, onClick }: FeatureCardProps) 
             {card.arabicTitle}
           </p>
 
-          {/* English title — matched to Arabic at 1.2rem */}
-          <h3
-            className="font-bold text-white leading-tight -mt-0.5"
-            style={{ fontSize: "1.2rem" }}
-          >
+          {/* English title */}
+          <h3 className="font-bold text-white leading-tight -mt-0.5" style={{ fontSize: "1.2rem" }}>
             {card.title}
           </h3>
 
-          {/* Description — clearly secondary */}
-          <p
-            className="text-white/52 leading-snug line-clamp-2 mt-1.5"
-            style={{ fontSize: "0.78rem" }}
-          >
+          {/* Description */}
+          <p className="text-white/52 leading-snug line-clamp-2 mt-1.5" style={{ fontSize: "0.78rem" }}>
             {card.description}
           </p>
+
+          {/* Optional badge slot — prayer countdown */}
+          {badge && <div className="mt-1.5">{badge}</div>}
         </div>
 
         {/* ── Chevron ─────────────────────────────────────────────── */}
