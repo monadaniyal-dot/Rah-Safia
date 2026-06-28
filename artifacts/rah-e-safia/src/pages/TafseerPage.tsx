@@ -411,7 +411,7 @@ export default function TafseerPage() {
           transition={{ delay: 0.5 }}
           className="text-center text-xs text-muted-foreground mt-6"
         >
-          Maarif-ul-Quran · Ibn Kathir · Al-Sa'di via Quran.com API
+          Maarif-ul-Quran · Ibn Kathir · Tazkirul Quran via Quran.com API
         </motion.p>
 
       </div>

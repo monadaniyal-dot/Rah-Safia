@@ -57,17 +57,31 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     dataNote: "",
   },
   {
+    id: "tazkirul",
+    name: "Tazkirul Quran",
+    urduName: "تذکیر القرآن",
+    author: "Maulana Wahiduddin Khan",
+    authorUrdu: "مولانا وحید الدین خان",
+    lang: "english",
+    description:
+      "A contemporary English Tafseer offering reflective, thematic commentary — each verse is explained in light of its spiritual, rational, and universal significance.",
+    qurancomId: 817,
+    status: "available",
+    dataNote: "",
+  },
+  {
     id: "saddi",
     name: "Tafsir Al-Sa'di",
     urduName: "تفسیر السعدی",
     author: "Sheikh Abd ar-Rahman al-Sa'di",
     authorUrdu: "عبد الرحمن السعدی",
-    lang: "arabic",
+    lang: "english",
     description:
-      "A modern Arabic tafseer renowned for its clarity and accessibility — verse-by-verse commentary covering the linguistic, theological, and spiritual dimensions of every ayah.",
-    qurancomId: 91,
-    status: "available",
-    dataNote: "",
+      "A celebrated modern Tafseer by Sheikh al-Sa'di — clear, accessible, verse-by-verse commentary covering linguistic, theological, and spiritual dimensions of every ayah.",
+    qurancomId: null,
+    status: "coming-soon",
+    dataNote:
+      "The English translation of Tafsir Al-Sa'di ('Taysir al-Karim al-Rahman', translated by Abu Khaliyl, published by Darussalam) exists in print but is not available via any free public API. The Arabic original is on Quran.com (ID 91) but does not qualify as an English source. Integration requires a licensed English dataset or a digitized plaintext of the Darussalam edition with API access.",
   },
   {
     id: "tafhim",
