@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookMarked,
@@ -64,7 +64,7 @@ function HadithCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
-      transition={{ duration: 0.22, delay: Math.min(idx * 0.03, 0.3) }}
+      transition={{ duration: 0.18, delay: Math.min(idx * 0.025, 0.12) }}
       className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden"
     >
       <div className="h-1 gradient-primary" />
@@ -157,6 +157,11 @@ export default function HadithPage() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
+  // Defer expensive filter recomputation so typing stays snappy
+  const deferredQuery = useDeferredValue(query);
+  const deferredCategory = useDeferredValue(activeCategory);
+  const isFiltering = deferredQuery !== query || deferredCategory !== activeCategory;
+
   const load = useCallback(
     async (id: CollectionId) => {
       setLoading(true);
@@ -182,8 +187,8 @@ export default function HadithPage() {
   const collectionMeta = COLLECTIONS.find((c) => c.id === activeCollection)!;
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const cat = activeCategory;
+    const q = deferredQuery.trim().toLowerCase();
+    const cat = deferredCategory;
 
     return allHadiths.filter((h) => {
       if (cat !== "All") {
@@ -198,7 +203,7 @@ export default function HadithPage() {
       const haystack = (h.text + " " + h.narrator).toLowerCase();
       return haystack.includes(q);
     });
-  }, [allHadiths, query, activeCategory]);
+  }, [allHadiths, deferredQuery, deferredCategory]);
 
   const displayed = filtered.slice(0, displayCount);
   const hasMore = displayCount < filtered.length;
@@ -303,7 +308,8 @@ export default function HadithPage() {
                   "bg-secondary border border-border",
                   "text-foreground placeholder:text-muted-foreground",
                   "outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50",
-                  "transition-all duration-200 disabled:opacity-50"
+                  "transition-all duration-200 disabled:opacity-50",
+                  isFiltering && "opacity-60"
                 )}
               />
               {query && (
@@ -410,6 +416,12 @@ export default function HadithPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {collectionMeta.compiler} · {collectionMeta.died}
                   </p>
+                  {collectionMeta.id === "muslim" && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+                      All hadiths are sahih — individual grading is not provided in this dataset.
+                    </p>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="flex items-center gap-1 justify-end text-emerald-600 dark:text-emerald-400">

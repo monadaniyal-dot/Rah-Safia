@@ -155,11 +155,33 @@ export function bestGrade(grades: HadithGrade[]): HadithGrade | null {
 }
 
 // ─── Narrator parsing ─────────────────────────────────────────────────────
+// Handles Bukhari-style ("Narrated X:"), Muslim-style ("X reported:", "It is
+// reported on the authority of X that ..."), and shared patterns.
 function parseNarrator(text: string): { narrator: string; body: string } {
-  const m = text.match(/^Narrated\s+(.+?):\s*([\s\S]*)/);
+  let m: RegExpMatchArray | null;
+
+  // 1. "Narrated X: ..." — standard Bukhari format
+  m = text.match(/^Narrated\s+(.+?):\s*([\s\S]+)/);
   if (m) return { narrator: m[1].trim(), body: m[2].trim() };
-  const m2 = text.match(/^(.+?)\s+narrated\s+that[:\s]*([\s\S]*)/i);
-  if (m2) return { narrator: m2[1].trim(), body: m2[2].trim() };
+
+  // 2. "X narrated that ..." — shared format
+  m = text.match(/^([A-Z][^,:]{2,60}?)\s+narrated\s+that\s+([\s\S]+)/);
+  if (m) return { narrator: m[1].trim(), body: m[2].trim() };
+
+  // 3. "X reported: ..." — Muslim format ("Abu Huraira reported:...")
+  m = text.match(/^([A-Z][^,:]{2,60}?)\s+reported:([\s\S]+)/);
+  if (m) return { narrator: m[1].trim(), body: m[2].trim() };
+
+  // 4. "It is reported/narrated on the authority of X that ..."
+  m = text.match(
+    /^It is (?:reported|narrated) on the authority of\s+(.+?)\s+that\s+(?:(?:he|she|they) said[:\s]+)?([\s\S]+)/i
+  );
+  if (m) return { narrator: m[1].trim(), body: m[2].trim() };
+
+  // 5. "It is reported by X that ..."
+  m = text.match(/^It is (?:reported|narrated) by\s+(.+?)\s+that\s+([\s\S]+)/i);
+  if (m) return { narrator: m[1].trim(), body: m[2].trim() };
+
   return { narrator: "", body: text };
 }
 
@@ -196,19 +218,24 @@ export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> 
     }
   }
 
-  const entries: HadithEntry[] = (engData.hadiths ?? []).map((h) => {
-    const rawText = (h.text as string) ?? "";
-    const { narrator, body } = parseNarrator(rawText);
-    return {
-      hadithnumber: h.hadithnumber as number,
-      arabicnumber: h.arabicnumber as number | undefined,
-      text: body || rawText,
-      arabicText: araMap.get(h.hadithnumber as number) ?? "",
-      narrator,
-      grades: (h.grades as HadithGrade[]) ?? [],
-      reference: (h.reference as { book?: number; hadith?: number }) ?? {},
-    };
-  });
+  const entries: HadithEntry[] = (engData.hadiths ?? [])
+    .filter((h) => {
+      const t = (h.text as string) ?? "";
+      return t.trim().length > 0;
+    })
+    .map((h) => {
+      const rawText = (h.text as string) ?? "";
+      const { narrator, body } = parseNarrator(rawText);
+      return {
+        hadithnumber: h.hadithnumber as number,
+        arabicnumber: h.arabicnumber as number | undefined,
+        text: body || rawText,
+        arabicText: araMap.get(h.hadithnumber as number) ?? "",
+        narrator,
+        grades: (h.grades as HadithGrade[]) ?? [],
+        reference: (h.reference as { book?: number; hadith?: number }) ?? {},
+      };
+    });
 
   cache.set(id, entries);
   return entries;
