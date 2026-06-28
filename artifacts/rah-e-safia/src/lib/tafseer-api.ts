@@ -57,6 +57,19 @@ export const TAFSEER_SOURCES: TafseerSource[] = [
     dataNote: "",
   },
   {
+    id: "saddi",
+    name: "Tafsir Al-Sa'di",
+    urduName: "تفسیر السعدی",
+    author: "Sheikh Abd ar-Rahman al-Sa'di",
+    authorUrdu: "عبد الرحمن السعدی",
+    lang: "arabic",
+    description:
+      "A modern Arabic tafseer renowned for its clarity and accessibility — verse-by-verse commentary covering the linguistic, theological, and spiritual dimensions of every ayah.",
+    qurancomId: 91,
+    status: "available",
+    dataNote: "",
+  },
+  {
     id: "tafhim",
     name: "Tafhim-ul-Quran",
     urduName: "تفہیم القرآن",

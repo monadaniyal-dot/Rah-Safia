@@ -175,7 +175,13 @@ export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpe
 
                     {/* Tafseer prose */}
                     <div
-                      className="tafseer-prose px-4 py-3 text-sm text-foreground/85 leading-relaxed max-h-[420px] overflow-y-auto"
+                      className={cn(
+                        "tafseer-prose px-4 py-3 text-foreground/85 leading-relaxed max-h-[420px] overflow-y-auto",
+                        result.source.lang === "arabic"
+                          ? "font-arabic text-lg leading-[2.1] text-right"
+                          : "text-sm leading-relaxed"
+                      )}
+                      dir={result.source.lang === "arabic" ? "rtl" : "ltr"}
                       dangerouslySetInnerHTML={{ __html: sanitize(result.text) }}
                     />
 
