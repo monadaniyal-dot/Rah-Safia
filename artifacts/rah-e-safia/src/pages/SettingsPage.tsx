@@ -988,10 +988,12 @@ export default function SettingsPage() {
           <SettingRow
             icon={BookOpen}
             label="Resume Last Read"
-            description="Open Quran where you left off"
-            dim
+            description="Automatically scroll to your last Ayah when reopening a Surah"
           >
-            <Toggle value={settings.resumeLastRead} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.resumeLastRead}
+              onChange={(v) => update("resumeLastRead", v)}
+            />
           </SettingRow>
 
           <SettingRow
@@ -1017,10 +1019,12 @@ export default function SettingsPage() {
           <SettingRow
             icon={BookOpen}
             label="Highlight Last Read Verse"
-            description="Visually mark where you last stopped reading"
-            dim
+            description="Show a gold accent on your most recently read Ayah"
           >
-            <Toggle value={settings.highlightLastReadVerse} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.highlightLastReadVerse}
+              onChange={(v) => update("highlightLastReadVerse", v)}
+            />
           </SettingRow>
         </SectionCard>
 

@@ -1,13 +1,17 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
-import { BookOpen, Search, X, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BookOpen, Search, X, ChevronRight, BookMarked, Clock, ArrowRight } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/lib/use-settings";
+import { useReadingProgress, relativeTime } from "@/lib/reading-progress";
 
 export default function QuranPage() {
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
+  const { settings } = useSettings();
+  const progress = useReadingProgress();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -21,6 +25,8 @@ export default function QuranPage() {
         s.arabicName.includes(query.trim())
     );
   }, [query]);
+
+  const saved = settings.resumeLastRead ? progress.quran : undefined;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -106,6 +112,70 @@ export default function QuranPage() {
 
         {/* Surah list */}
         <div className="flex-1 px-4 lg:px-8 py-3">
+
+          {/* ── Continue Reading banner ── */}
+          <AnimatePresence>
+            {saved && !query && (
+              <motion.div
+                key="resume-banner"
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
+                className="mb-4"
+              >
+                <button
+                  onClick={() => navigate(`/quran/${saved.surahNum}`)}
+                  className="w-full text-left rounded-2xl border border-gold/35 bg-gradient-to-r from-gold-muted/60 to-gold-muted/30 hover:from-gold-muted hover:to-gold-muted/50 transition-all duration-200 overflow-hidden shadow-sm group"
+                >
+                  {/* Accent line */}
+                  <div className="h-0.5 w-full bg-gradient-to-r from-gold/50 via-gold to-gold/50" />
+
+                  <div className="px-4 py-3.5 flex items-center gap-3">
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-xl bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0">
+                      <BookMarked className="w-5 h-5 text-gold" strokeWidth={1.8} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-gold/80 uppercase tracking-widest mb-0.5">
+                        Continue Reading
+                      </p>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-foreground leading-tight">
+                          {saved.surahName}
+                        </span>
+                        <span className="font-arabic text-sm text-foreground/70" dir="rtl">
+                          {saved.surahArabicName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          Ayah {saved.ayahNum}
+                          {saved.ayahNum > 1 && (
+                            <span className="text-muted-foreground/60"> of {surahs.find(s => s.number === saved.surahNum)?.verses ?? "…"}</span>
+                          )}
+                        </span>
+                        <span className="text-muted-foreground/30 text-xs">·</span>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                          <Clock className="w-3 h-3" strokeWidth={2} />
+                          {relativeTime(saved.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <ArrowRight
+                      className="w-4 h-4 text-gold/70 shrink-0 group-hover:translate-x-0.5 transition-transform duration-150"
+                      strokeWidth={2}
+                    />
+                  </div>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="font-arabic text-3xl text-muted-foreground/40 mb-3" dir="rtl">؟</p>
@@ -135,7 +205,6 @@ export default function QuranPage() {
 
                   {/* Names — three-tier hierarchy */}
                   <div className="flex-1 min-w-0">
-                    {/* Tier 1: Arabic name — highest emphasis */}
                     <p
                       className="font-arabic text-foreground leading-snug font-bold truncate"
                       dir="rtl"
@@ -143,13 +212,9 @@ export default function QuranPage() {
                     >
                       {surah.arabicName}
                     </p>
-
-                    {/* Tier 2: English transliteration — second emphasis */}
                     <p className="text-sm font-bold text-foreground/85 mt-0.5 leading-tight">
                       {surah.name}
                     </p>
-
-                    {/* Tier 3: Meaning + metadata — smallest, muted */}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span className="text-xs text-muted-foreground">{surah.englishName}</span>
                       <span className="text-muted-foreground/40 text-xs">·</span>

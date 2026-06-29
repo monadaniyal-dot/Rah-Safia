@@ -1,0 +1,95 @@
+Complete the implementation of the remaining non-functional Settings options. Every setting listed below must perform a real function and persist across app restarts.
+
+## 1. Resume Last Read
+
+Implement a fully functional "Resume Last Read" setting.
+
+Requirements:
+
+* When enabled, automatically save:
+
+  * Surah
+  * Ayah
+  * Scroll position
+  * Selected translation
+  * Selected Tafseer (if open)
+* When the user reopens the Quran, automatically resume from the exact previous reading position.
+* When disabled, always open the Quran from the beginning or the Surah list.
+* Persist the user's preference.
+
+---
+
+## 2. Highlight Last Read Verse
+
+Implement a visual indicator for the last verse the user was reading.
+
+Requirements:
+
+* Highlight only the saved last-read verse.
+* Use a subtle premium highlight (do not overpower the theme).
+* Automatically remove the highlight when the user continues reading and reaches a newer verse.
+* Respect the toggle in Settings.
+
+---
+
+## 3. Daily Dua Reminder
+
+Implement local notifications for the Daily Dua.
+
+Requirements:
+
+* Send one reminder each day.
+* Use the reminder time selected in Settings.
+* Notification opens directly to the Daily Reflection / Daily Dua section.
+* Persist the preference.
+
+---
+
+## 4. Daily Inspiration Reminder
+
+Implement local notifications for the Daily Quran Reflection.
+
+Requirements:
+
+* One notification per day.
+* Use the configured reminder time.
+* Opening the notification should navigate directly to the Daily Reflection section.
+
+---
+
+## 5. Reminder Time
+
+Implement a shared reminder scheduler.
+
+Provide options such as:
+
+* 7:00 AM
+* 8:00 AM
+* 9:00 AM
+* Custom Time
+
+Changing this setting should automatically update the schedule for:
+
+* Daily Reflection
+* Daily Dua
+
+Persist the selected reminder time.
+
+---
+
+## General Requirements
+
+* No "Coming Soon" placeholders.
+* All settings must be fully functional.
+* Store preferences using the existing persistence system.
+* Restore preferences automatically on app launch.
+* Use browser/device local notifications where supported.
+* If notification permission has not yet been granted, request it gracefully when the user enables reminders.
+* Preserve all existing functionality.
+
+After implementation provide:
+
+1. Files modified.
+2. Notification scheduling approach.
+3. Persistence mechanism.
+4. Verification that each setting works correctly.

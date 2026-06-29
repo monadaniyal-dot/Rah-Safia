@@ -1,7 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2, Bookmark as BookmarkIcon, BookmarkCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
+  Bookmark as BookmarkIcon,
+  BookmarkCheck,
+  BookMarked,
+} from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
@@ -9,7 +18,10 @@ import { useBookmarks } from "@/lib/bookmarks";
 import { useSettings } from "@/lib/use-settings";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
-import { saveQuranProgress } from "@/lib/reading-progress";
+import {
+  saveQuranProgress,
+  getQuranProgress,
+} from "@/lib/reading-progress";
 
 function langToMode(lang: string): TranslationMode {
   switch (lang) {
@@ -48,6 +60,8 @@ function AyahCard({
   index,
   bookmarked,
   showTransliteration,
+  isLastRead,
+  highlightLastRead,
   onToggleBookmark,
 }: {
   ayah: AyahWithTranslations;
@@ -57,30 +71,67 @@ function AyahCard({
   index: number;
   bookmarked: boolean;
   showTransliteration: boolean;
+  isLastRead: boolean;
+  highlightLastRead: boolean;
   onToggleBookmark: () => void;
 }) {
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
   const displayEnglish = showEnglish(mode);
+  const shouldHighlight = isLastRead && highlightLastRead;
 
   return (
     <motion.article
+      id={`ayah-${surahNumber}-${ayah.numberInSurah}`}
+      data-ayah={ayah.numberInSurah}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: Math.min(index * 0.035, 0.45) }}
-      className="rounded-2xl border border-primary/12 bg-card shadow-sm overflow-hidden"
+      className={cn(
+        "rounded-2xl border shadow-sm overflow-hidden transition-colors duration-500",
+        shouldHighlight
+          ? "border-gold/50 bg-card ring-1 ring-gold/25"
+          : "border-primary/12 bg-card"
+      )}
     >
+      {/* Last-read indicator strip */}
+      <AnimatePresence>
+        {shouldHighlight && (
+          <motion.div
+            key="last-read-strip"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="h-0.5 w-full bg-gradient-to-r from-gold/40 via-gold to-gold/40 origin-left"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Ayah header row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-sm shrink-0">
+          <div
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 transition-colors duration-500",
+              shouldHighlight ? "bg-gold text-white" : "gradient-primary"
+            )}
+          >
             <span className="text-white text-xs font-bold">{ayah.numberInSurah}</span>
           </div>
           <div className="min-w-0">
-            <span className="text-xs text-muted-foreground">
-              {surahName} {surahNumber}:{ayah.numberInSurah}
-            </span>
-            <span className="text-[10px] text-muted-foreground/60 ml-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {surahName} {surahNumber}:{ayah.numberInSurah}
+              </span>
+              {shouldHighlight && (
+                <span className="text-[9px] font-bold text-gold/80 bg-gold-muted px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-gold/20 flex items-center gap-0.5">
+                  <BookMarked className="w-2 h-2" strokeWidth={2.5} />
+                  Last read
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground/60 ml-0">
               Juz {ayah.juz} · P.{ayah.page}
             </span>
           </div>
@@ -113,7 +164,10 @@ function AyahCard({
       <div className="px-4 pb-4">
         {/* Arabic */}
         <p
-          className="font-arabic text-2xl text-foreground leading-[2.2] text-right py-3"
+          className={cn(
+            "font-arabic text-2xl leading-[2.2] text-right py-3 transition-colors duration-500",
+            shouldHighlight ? "text-foreground" : "text-foreground"
+          )}
           dir="rtl"
           lang="ar"
         >
@@ -208,9 +262,24 @@ export default function SurahPage() {
   const surah = surahs.find((s) => s.number === surahNum);
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
+  // Track the last-read ayah number for highlight + to initialize on mount
+  const [lastReadAyahNum, setLastReadAyahNum] = useState<number>(0);
+
+  // Ref to current mode so IntersectionObserver callback doesn't need mode in its dep list
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
+  // Save timer ref for debouncing IntersectionObserver saves
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Whether we've already done the initial scroll-to-saved (only once per mount)
+  const hasScrolledRef = useRef(false);
+
+  // ── Load surah data ──────────────────────────────────────────────────────
   const load = useCallback((num: number) => {
     setIsLoading(true);
     setError(null);
+    hasScrolledRef.current = false;
     fetchSurah(num, {
       edition: settings.defaultTranslation,
       transliteration: settings.showTransliteration,
@@ -230,11 +299,94 @@ export default function SurahPage() {
     load(surahNum);
   }, [surahNum, load]);
 
-  // Save reading progress whenever this surah's ayahs load
+  // ── Init last-read ayah from saved progress ──────────────────────────────
   useEffect(() => {
-    if (ayahs.length > 0 && surah) {
-      saveQuranProgress(surahNum, surah.name, surah.arabicName, 1);
+    const prog = getQuranProgress();
+    if (prog && prog.surahNum === surahNum) {
+      setLastReadAyahNum(prog.ayahNum);
+    } else {
+      setLastReadAyahNum(0);
     }
+  }, [surahNum]);
+
+  // ── After ayahs load: restore mode + scroll to saved position ─────────────
+  useEffect(() => {
+    if (!ayahs.length || hasScrolledRef.current) return;
+    hasScrolledRef.current = true;
+
+    const prog = getQuranProgress();
+    if (!prog || prog.surahNum !== surahNum) {
+      // New surah — save it at ayah 1 as a "started" marker
+      if (surah) saveQuranProgress(surahNum, surah.name, surah.arabicName, 1, { translationMode: modeRef.current });
+      return;
+    }
+
+    // Restore saved translation mode
+    if (prog.translationMode && TRANSLATION_MODES.some(tm => tm.id === prog.translationMode)) {
+      setMode(prog.translationMode as TranslationMode);
+    }
+
+    // Only auto-scroll if resumeLastRead is enabled and not on ayah 1
+    if (!settings.resumeLastRead || prog.ayahNum <= 1) return;
+
+    // Give DOM a frame to render, then scroll
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.getElementById(`ayah-${surahNum}-${prog.ayahNum}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 120);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ayahs.length]);
+
+  // ── IntersectionObserver: track visible ayah + debounced save ─────────────
+  useEffect(() => {
+    if (!ayahs.length || !surah) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Pick the most-intersecting visible entry
+        let best: IntersectionObserverEntry | null = null;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (!best || entry.intersectionRatio > best.intersectionRatio) {
+              best = entry;
+            }
+          }
+        }
+        if (!best) return;
+
+        const ayahNum = parseInt(
+          best.target.getAttribute("data-ayah") ?? "0",
+          10
+        );
+        if (!ayahNum) return;
+
+        // Update highlight immediately
+        setLastReadAyahNum(ayahNum);
+
+        // Debounce the localStorage write (1 s)
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          saveQuranProgress(surahNum, surah.name, surah.arabicName, ayahNum, {
+            translationMode: modeRef.current,
+          });
+        }, 1000);
+      },
+      { threshold: [0.1, 0.5, 0.9], rootMargin: "-10% 0px -10% 0px" }
+    );
+
+    const elements = document.querySelectorAll<Element>(`[data-ayah]`);
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  // Re-run when ayahs change (new surah) but NOT when mode changes — modeRef handles that
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, surahNum, surah]);
 
   if (!surah) {
@@ -443,6 +595,8 @@ export default function SurahPage() {
                   index={idx}
                   bookmarked={isBookmarked(surahNum, ayah.numberInSurah)}
                   showTransliteration={settings.showTransliteration}
+                  isLastRead={ayah.numberInSurah === lastReadAyahNum}
+                  highlightLastRead={settings.highlightLastReadVerse}
                   onToggleBookmark={() =>
                     toggleBookmark({
                       surahNumber: surahNum,

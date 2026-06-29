@@ -10,6 +10,8 @@ export interface ProgressEntry {
   timestamp: number;
   path: string;
   sourceName?: string;
+  translationMode?: string;
+  tafseerSource?: string;
 }
 
 export interface ReadingProgress {
@@ -46,7 +48,8 @@ export function saveQuranProgress(
   surahNum: number,
   surahName: string,
   surahArabicName: string,
-  ayahNum: number
+  ayahNum: number,
+  extras?: { translationMode?: string; tafseerSource?: string }
 ): void {
   writeRaw({
     ...readRaw(),
@@ -57,8 +60,14 @@ export function saveQuranProgress(
       ayahNum,
       timestamp: Date.now(),
       path: `/quran/${surahNum}`,
+      ...extras,
     },
   });
+}
+
+/** Read the saved Quran position without subscribing to updates. */
+export function getQuranProgress(): ProgressEntry | undefined {
+  return readRaw().quran;
 }
 
 export function saveTafseerProgress(
