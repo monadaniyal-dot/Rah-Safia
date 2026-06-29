@@ -73,10 +73,21 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-poppins), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button, a {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .font-arabic {
     font-family: var(--font-amiri), 'Amiri', serif;

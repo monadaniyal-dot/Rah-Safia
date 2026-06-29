@@ -23,12 +23,14 @@ export default function ThemeToggle({ className, compact = false }: ThemeToggleP
   }
 
   return (
-    <button
+    <motion.button
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      whileTap={{ scale: 0.82 }}
+      transition={{ type: "spring", stiffness: 500, damping: 28 }}
       className={cn(
         "relative flex items-center justify-center rounded-full",
-        "bg-secondary hover:bg-accent transition-colors duration-200",
+        "bg-secondary hover:bg-accent active:bg-accent transition-colors duration-200",
         "text-foreground/70 hover:text-foreground",
         compact ? "w-9 h-9" : "w-10 h-10",
         className
@@ -38,25 +40,25 @@ export default function ThemeToggle({ className, compact = false }: ThemeToggleP
         {isDark ? (
           <motion.span
             key="sun"
-            initial={{ rotate: -90, opacity: 0 }}
-            animate={{ rotate: 0, opacity: 1 }}
-            exit={{ rotate: 90, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.18 }}
           >
-            <Sun className="w-4.5 h-4.5" strokeWidth={1.8} />
+            <Sun className="w-4 h-4" strokeWidth={1.8} />
           </motion.span>
         ) : (
           <motion.span
             key="moon"
-            initial={{ rotate: 90, opacity: 0 }}
-            animate={{ rotate: 0, opacity: 1 }}
-            exit={{ rotate: -90, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ rotate: 90, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            exit={{ rotate: -90, opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.18 }}
           >
-            <Moon className="w-4.5 h-4.5" strokeWidth={1.8} />
+            <Moon className="w-4 h-4" strokeWidth={1.8} />
           </motion.span>
         )}
       </AnimatePresence>
-    </button>
+    </motion.button>
   );
 }
