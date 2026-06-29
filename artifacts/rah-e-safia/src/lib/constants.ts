@@ -7,6 +7,7 @@ import {
   Home,
   Bookmark,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -85,6 +86,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "التفسير",
     icon: BookMarked,
     path: "/tafseer",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    arabicLabel: "الإعدادات",
+    icon: Settings,
+    path: "/settings",
   },
 ];
 

@@ -1,0 +1,135 @@
+Design and implement a premium, production-quality Settings page for Rah-e-Safia.
+
+Objective:
+Create a clean, elegant, and well-organized Settings experience that gives users meaningful control over the app without making it feel cluttered.
+
+## Layout
+
+Organize settings into clearly separated sections using premium cards with appropriate spacing.
+
+---
+
+### 📖 Quran Settings
+
+Include:
+
+* Default Translation
+* Default Tafseer
+* Arabic Font Size (slider)
+* Translation Font Size (slider)
+* Show/Hide Transliteration
+* Remember Last Reading Position (toggle)
+
+---
+
+### 🕌 Prayer Settings
+
+Include:
+
+* Enable Prayer Notifications (toggle)
+* Prayer Reminder (5, 10, 15 minutes before)
+* Prayer Calculation Method
+* Madhab Selection (if supported)
+* Automatic Location Detection (toggle)
+* Manual Location Override
+
+---
+
+### 🎨 Appearance
+
+Include:
+
+* Light Mode
+* Dark Mode
+* System Default
+* Accent Theme (keep current green as default)
+* Compact Mode (optional)
+
+---
+
+### 🌍 Language
+
+Include:
+
+* App Language
+* Quran Translation Language
+* Tafseer Language (future-ready)
+
+---
+
+### 🔔 Notifications
+
+Include:
+
+* Daily Reflection Notification
+* Daily Dua Notification
+* Prayer Notifications
+* Reminder Time Selection
+
+---
+
+### 📚 Reading Preferences
+
+Include:
+
+* Resume Last Read Automatically
+* Keep Screen Awake While Reading
+* Smooth Scrolling Toggle
+
+---
+
+### 💾 Data
+
+Include:
+
+* Clear Cache
+* Refresh Quran Data
+* Refresh Hadith Data
+* Reset All Settings (with confirmation)
+
+---
+
+### ℹ️ About
+
+Include:
+
+* App Version
+* Developer Information
+* Data Sources
+* Privacy Policy
+* Terms & Conditions
+* Contact Us
+* Rate the App
+* Share the App
+
+---
+
+## Design Requirements
+
+* Follow the existing Rah-e-Safia premium green theme.
+* Use modern settings cards with rounded corners.
+* Use meaningful icons for every setting.
+* Maintain consistent spacing and typography.
+* Add subtle animations for switches and navigation.
+* Ensure excellent mobile responsiveness.
+* Support both Light and Dark themes.
+* Use expandable sections where appropriate to avoid long scrolling.
+* Do not change any existing functionality unless necessary.
+* Any feature not yet implemented (such as notifications) should appear as disabled or marked "Coming Soon" rather than being removed.
+
+---
+
+## Technical Requirements
+
+* Persist all settings using local storage or the existing persistence system.
+* Restore user preferences automatically when the app launches.
+* Structure the code so additional settings can be added easily in future updates.
+
+---
+
+After implementation provide:
+
+1. Files created or modified.
+2. New reusable components created.
+3. Settings persistence approach.
+4. Any future-ready placeholders that were added.
