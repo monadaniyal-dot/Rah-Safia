@@ -10,7 +10,12 @@ export interface AppSettings {
   defaultTranslation: string;
   defaultTafseer: string;
   prayerNotifications: boolean;
-  prayerReminderMinutes: 5 | 10 | 15;
+  fajrNotification: boolean;
+  dhuhrNotification: boolean;
+  asrNotification: boolean;
+  maghribNotification: boolean;
+  ishaNotification: boolean;
+  prayerReminderMinutes: 0 | 5 | 10 | 15;
   calculationMethod: string;
   madhab: string;
   autoLocation: boolean;
@@ -35,6 +40,11 @@ export const SETTINGS_DEFAULTS: AppSettings = {
   defaultTranslation: "en.sahih",
   defaultTafseer: "maarif",
   prayerNotifications: false,
+  fajrNotification: true,
+  dhuhrNotification: true,
+  asrNotification: true,
+  maghribNotification: true,
+  ishaNotification: true,
   prayerReminderMinutes: 10,
   calculationMethod: "MWL",
   madhab: "shafi",
@@ -78,6 +88,9 @@ export function useSettings() {
     setSettings((prev) => {
       const next = { ...prev, [key]: value };
       saveSettings(next);
+      window.dispatchEvent(
+        new CustomEvent("rah-e-safia:settings-changed", { detail: next })
+      );
       return next;
     });
   }, []);
@@ -85,6 +98,9 @@ export function useSettings() {
   const reset = useCallback(() => {
     saveSettings(SETTINGS_DEFAULTS);
     setSettings(SETTINGS_DEFAULTS);
+    window.dispatchEvent(
+      new CustomEvent("rah-e-safia:settings-changed", { detail: SETTINGS_DEFAULTS })
+    );
   }, []);
 
   useEffect(() => {
@@ -97,6 +113,13 @@ export function useSettings() {
       `${settings.translationFontSize}px`
     );
   }, [settings.arabicFontSize, settings.translationFontSize]);
+
+  useEffect(() => {
+    const rtlLangs = ["ar", "ur"];
+    const isRTL = rtlLangs.includes(settings.appLanguage);
+    document.documentElement.dir = isRTL ? "rtl" : "ltr";
+    document.documentElement.lang = settings.appLanguage;
+  }, [settings.appLanguage]);
 
   return { settings, update, reset };
 }

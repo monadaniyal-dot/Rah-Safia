@@ -5,6 +5,9 @@ import {
   LocateFixed, Loader2, AlertCircle, MapPin, RefreshCw, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/lib/use-settings";
+import { getSavedLocation } from "@/lib/location-store";
+import { schedulePrayerNotifications, getNotificationPermission } from "@/lib/prayer-notifications";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +23,6 @@ interface PrayerInfo {
 interface LocationInfo {
   lat: number;
   lon: number;
-  /** Human-readable city / neighbourhood obtained via reverse geocoding */
   cityName: string;
 }
 
@@ -46,6 +48,27 @@ const PRAYER_META = [
   { id: "Maghrib", name: "Maghrib", arabicName: "المغرب", icon: Sunset,  period: "evening"   },
   { id: "Isha",    name: "Isha",    arabicName: "العشاء", icon: Moon,    period: "night"     },
 ] as const;
+
+const ALADHAN_METHOD: Record<string, number> = {
+  MWL: 1,
+  ISNA: 2,
+  Egypt: 3,
+  Makkah: 4,
+  Karachi: 5,
+};
+
+const ALADHAN_SCHOOL: Record<string, number> = {
+  shafi: 0,
+  hanafi: 1,
+};
+
+const METHOD_LABELS: Record<string, string> = {
+  MWL: "Muslim World League",
+  ISNA: "ISNA",
+  Egypt: "Egyptian Authority",
+  Makkah: "Umm al-Qura",
+  Karachi: "Karachi",
+};
 
 const periodStyles: Record<string, { bg: string; iconColor: string }> = {
   dawn:      { bg: "from-indigo-950 to-blue-900",  iconColor: "text-blue-300"   },
@@ -104,10 +127,6 @@ function fmtCoord(n: number, pos: string, neg: string) {
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 
-/**
- * Reverse-geocode lat/lon → human city name using OSM Nominatim.
- * Falls back to coordinate string if it fails.
- */
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
   try {
     const res = await fetch(
@@ -117,7 +136,6 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
     if (!res.ok) throw new Error("geocode fail");
     const json = await res.json();
     const a = json.address ?? {};
-    // Pick the most specific available label
     const city =
       a.suburb ?? a.neighbourhood ?? a.village ?? a.town ?? a.city ??
       a.county ?? a.state ?? json.display_name?.split(",")[0] ?? "";
@@ -127,9 +145,6 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
   }
 }
 
-/**
- * Forward-geocode a city name → { lat, lon, cityName }.
- */
 async function forwardGeocode(query: string): Promise<LocationInfo> {
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
@@ -145,20 +160,19 @@ async function forwardGeocode(query: string): Promise<LocationInfo> {
   return { lat, lon, cityName };
 }
 
-/**
- * Fetch prayer times from Aladhan using exact GPS coordinates.
- * The API calculates accurate local timings for the given lat/lon.
- */
-async function fetchPrayerTimes(location: LocationInfo): Promise<ReadyData> {
+async function fetchPrayerTimes(
+  location: LocationInfo,
+  method: number,
+  school: number
+): Promise<ReadyData> {
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, "0");
   const mm = String(today.getMonth() + 1).padStart(2, "0");
   const yyyy = today.getFullYear();
 
-  // method=1 (Muslim World League) is widely accepted globally
   const url =
     `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}` +
-    `?latitude=${location.lat}&longitude=${location.lon}&method=1`;
+    `?latitude=${location.lat}&longitude=${location.lon}&method=${method}&school=${school}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Aladhan API error ${res.status}`);
@@ -172,7 +186,6 @@ async function fetchPrayerTimes(location: LocationInfo): Promise<ReadyData> {
     id: meta.id,
     name: meta.name,
     arabicName: meta.arabicName,
-    // Slice to 5 chars to strip any timezone suffix like " (PKT)"
     time24: timings[meta.id].slice(0, 5),
     icon: meta.icon,
     period: meta.period,
@@ -237,7 +250,6 @@ function PrayerCard({
   );
 }
 
-/** Skeleton card while loading */
 function SkeletonCard({ period }: { period: string }) {
   const style = periodStyles[period];
   return (
@@ -261,6 +273,7 @@ function SkeletonCard({ period }: { period: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PrayerTimesPage() {
+  const { settings } = useSettings();
   const [state, setState] = useState<PageState>({ status: "idle" });
   const [countdown, setCountdown] = useState("--:--");
   const [nextIdx, setNextIdx] = useState(0);
@@ -268,6 +281,7 @@ export default function PrayerTimesPage() {
   const [cityError, setCityError] = useState("");
   const [cityLoading, setCityLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoLoaded = useRef(false);
 
   const startTicker = useCallback((prayers: PrayerInfo[]) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -283,19 +297,41 @@ export default function PrayerTimesPage() {
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  /** Core flow: given a LocationInfo, fetch and display prayer times */
   const loadFromLocation = useCallback(async (location: LocationInfo) => {
+    const method = ALADHAN_METHOD[settings.calculationMethod] ?? 1;
+    const school = ALADHAN_SCHOOL[settings.madhab] ?? 0;
     setState({ status: "fetching", location });
     try {
-      const data = await fetchPrayerTimes(location);
+      const data = await fetchPrayerTimes(location, method, school);
       setState({ status: "ready", data });
       startTicker(data.prayers);
+      if (settings.prayerNotifications && getNotificationPermission() === "granted") {
+        schedulePrayerNotifications(data.prayers, {
+          prayerNotifications: settings.prayerNotifications,
+          prayerReminderMinutes: settings.prayerReminderMinutes,
+          fajrNotification: settings.fajrNotification,
+          dhuhrNotification: settings.dhuhrNotification,
+          asrNotification: settings.asrNotification,
+          maghribNotification: settings.maghribNotification,
+          ishaNotification: settings.ishaNotification,
+        });
+      }
     } catch {
       setState({ status: "error", message: "Could not fetch prayer times. Check your connection and try again." });
     }
-  }, [startTicker]);
+  }, [startTicker, settings]);
 
-  /** Request GPS from browser — uses high accuracy for precise coordinates */
+  // On mount: if auto-location is disabled and we have a saved location, load it
+  useEffect(() => {
+    if (hasAutoLoaded.current) return;
+    hasAutoLoaded.current = true;
+    if (!settings.autoLocation) {
+      const saved = getSavedLocation();
+      if (saved) loadFromLocation(saved);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const requestGPS = useCallback(() => {
     if (!navigator.geolocation) {
       setState({ status: "error", message: "Geolocation is not supported by your browser.", permDenied: true });
@@ -306,7 +342,6 @@ export default function PrayerTimesPage() {
       async (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        // Reverse-geocode to get the real neighbourhood/city name
         const cityName = await reverseGeocode(lat, lon);
         await loadFromLocation({ lat, lon, cityName });
       },
@@ -322,12 +357,10 @@ export default function PrayerTimesPage() {
           permDenied: err.code === 1,
         });
       },
-      // HIGH accuracy = GPS chip, not IP/WiFi — critical for neighbourhood-level precision
       { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
   }, [loadFromLocation]);
 
-  /** Manual city search fallback */
   const handleCitySearch = useCallback(async () => {
     const q = cityInput.trim();
     if (!q) return;
@@ -350,6 +383,9 @@ export default function PrayerTimesPage() {
   const dateLabel = now.toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
+
+  const methodLabel = METHOD_LABELS[settings.calculationMethod] ?? "Muslim World League";
+  const madhabLabel = settings.madhab === "hanafi" ? "Hanafi" : "Standard";
 
   return (
     <div className="min-h-full flex flex-col">
@@ -482,7 +518,7 @@ export default function PrayerTimesPage() {
             </div>
           )}
 
-          {/* Ready — show exact coordinates for verification */}
+          {/* Ready */}
           {state.status === "ready" && (
             <div className="rounded-2xl border border-border bg-secondary/40 p-3 flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -494,7 +530,7 @@ export default function PrayerTimesPage() {
                   {fmtCoord(state.data.location.lat, "N", "S")} · {fmtCoord(state.data.location.lon, "E", "W")}
                 </p>
                 <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                  Times calculated from these exact coordinates
+                  {methodLabel} · {madhabLabel} Asr
                 </p>
               </div>
               <button
@@ -507,7 +543,7 @@ export default function PrayerTimesPage() {
             </div>
           )}
 
-          {/* Manual city input — shown when permission denied OR as always-available fallback */}
+          {/* Manual city input */}
           {(state.status === "error" || state.status === "idle" || state.status === "ready") && (
             <div className="rounded-xl border border-border bg-card/60 p-3">
               <p className="text-xs text-muted-foreground mb-2 font-medium">
@@ -568,7 +604,7 @@ export default function PrayerTimesPage() {
           className="text-center text-xs text-muted-foreground mt-8"
         >
           {isReady
-            ? "Times via Aladhan · Muslim World League method · Calculated from exact GPS coordinates"
+            ? `Times via Aladhan · ${methodLabel} · ${madhabLabel} Asr`
             : "Allow location access or enter your city to load accurate prayer times."}
         </motion.p>
       </div>

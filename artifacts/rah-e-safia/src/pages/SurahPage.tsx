@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, BookOpen, RefreshCw, AlertCircle, Loader2, Bookmark as BookmarkIcon, BookmarkCheck } from "lucide-react";
@@ -6,9 +6,18 @@ import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
 import { useBookmarks } from "@/lib/bookmarks";
+import { useSettings } from "@/lib/use-settings";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
 import { saveQuranProgress } from "@/lib/reading-progress";
+
+function langToMode(lang: string): TranslationMode {
+  switch (lang) {
+    case "ur": return "arabic+urdu";
+    case "en": return "arabic+english";
+    default: return "arabic";
+  }
+}
 
 /* ── Skeleton loader ── */
 function AyahSkeleton({ index }: { index: number }) {
@@ -38,6 +47,7 @@ function AyahCard({
   mode,
   index,
   bookmarked,
+  showTransliteration,
   onToggleBookmark,
 }: {
   ayah: AyahWithTranslations;
@@ -46,6 +56,7 @@ function AyahCard({
   mode: TranslationMode;
   index: number;
   bookmarked: boolean;
+  showTransliteration: boolean;
   onToggleBookmark: () => void;
 }) {
   const hasSajda = isSajda(ayah);
@@ -109,10 +120,30 @@ function AyahCard({
           {ayah.arabic}
         </p>
 
-        {/* Translations — animated in/out */}
+        {/* Transliteration */}
         <AnimatePresence>
+          {showTransliteration && ayah.transliteration && (
+            <motion.div
+              key="transliteration"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="border-t border-border/40 pt-2 pb-1">
+                <p className="text-[10px] font-semibold text-gold/70 uppercase tracking-wide mb-1">
+                  Transliteration
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed italic">
+                  {ayah.transliteration}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          {/* English (Sahih International) — shown first */}
+        {/* Translations */}
+        <AnimatePresence>
           {displayEnglish && ayah.english && (
             <motion.div
               key="english"
@@ -132,7 +163,6 @@ function AyahCard({
             </motion.div>
           )}
 
-          {/* Urdu (Jalandhri) — shown below English */}
           {displayUrdu && ayah.urdu && (
             <motion.div
               key="urdu"
@@ -155,7 +185,6 @@ function AyahCard({
               </div>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
 
@@ -169,7 +198,8 @@ function AyahCard({
 export default function SurahPage() {
   const { number } = useParams<{ number: string }>();
   const [, navigate] = useLocation();
-  const [mode, setMode] = useState<TranslationMode>("arabic");
+  const { settings } = useSettings();
+  const [mode, setMode] = useState<TranslationMode>(() => langToMode(settings.translationLanguage));
   const [ayahs, setAyahs] = useState<AyahWithTranslations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,10 +208,13 @@ export default function SurahPage() {
   const surah = surahs.find((s) => s.number === surahNum);
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
-  const load = (num: number) => {
+  const load = useCallback((num: number) => {
     setIsLoading(true);
     setError(null);
-    fetchSurah(num)
+    fetchSurah(num, {
+      edition: settings.defaultTranslation,
+      transliteration: settings.showTransliteration,
+    })
       .then((data) => {
         setAyahs(data.ayahs);
         setIsLoading(false);
@@ -190,12 +223,12 @@ export default function SurahPage() {
         setError(err.message ?? "Failed to load surah");
         setIsLoading(false);
       });
-  };
+  }, [settings.defaultTranslation, settings.showTransliteration]);
 
   useEffect(() => {
     setAyahs([]);
     load(surahNum);
-  }, [surahNum]);
+  }, [surahNum, load]);
 
   // Save reading progress whenever this surah's ayahs load
   useEffect(() => {
@@ -216,26 +249,15 @@ export default function SurahPage() {
     );
   }
 
-  // Surah 1 (Al-Fatiha): Bismillah IS verse 1 — show all ayahs, no banner.
-  // Surah 9 (At-Tawbah): begins without Bismillah — no banner, show all ayahs.
-  // All others (2–114 except 9): show decorative banner; the API prepends the
-  // Bismillah text directly onto ayah 1's Arabic string (it is NOT a separate
-  // numbered ayah — the total count already matches the official Quran count).
-  // Correct fix: strip the Bismillah prefix from ayah 1's text; never remove the ayah.
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
 
-  // Diacritic-order-agnostic regex: matches each consonant of the Bismillah followed
-  // by zero or more Arabic diacritics (U+064B–U+0652, U+0670) in any order.
-  // This is necessary because the API encodes shadda+fatha as 0651+064e, while a
-  // typed Arabic literal in source code may store them in the opposite order (064e+0651),
-  // causing a literal regex to silently fail despite visually looking identical.
   const D = "[\\u064B-\\u0652\\u0670]*";
-  const A = "[\\u0671\\u0627]"; // alef (U+0627) or alef-wasla (U+0671)
+  const A = "[\\u0671\\u0627]";
   const BISMILLAH_PREFIX_RE = new RegExp(
-    "^\\u0628" + D + "\\u0633" + D + "\\u0645" + D + "\\s+" +   // بسم
-    A + D + "\\u0644" + D + "\\u0644" + D + "\\u0647" + D + "\\s+" +  // الله
-    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u0645" + D + "\\u0646" + D + "\\s+" + // الرحمن
-    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u064A" + D + "\\u0645" + D + "\\s*", // الرحيم
+    "^\\u0628" + D + "\\u0633" + D + "\\u0645" + D + "\\s+" +
+    A + D + "\\u0644" + D + "\\u0644" + D + "\\u0647" + D + "\\s+" +
+    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u0645" + D + "\\u0646" + D + "\\s+" +
+    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u064A" + D + "\\u0645" + D + "\\s*",
     "u"
   );
 
@@ -250,8 +272,6 @@ export default function SurahPage() {
 
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
-
-        {/* Row 1: back + title */}
         <div className="px-4 lg:px-8 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate("/quran")}
@@ -273,7 +293,6 @@ export default function SurahPage() {
             {surah.arabicName}
           </p>
         </div>
-
       </header>
 
       <div className="flex-1 px-4 lg:px-8 py-6 max-w-2xl mx-auto w-full">
@@ -340,9 +359,14 @@ export default function SurahPage() {
               </button>
             ))}
           </div>
+          {settings.showTransliteration && (
+            <p className="text-[10px] text-primary/60 mt-2 pl-1">
+              ✓ Transliteration enabled
+            </p>
+          )}
         </motion.div>
 
-        {/* ── Bismillah banner (surahs 2–114, skip 1 & 9) ── */}
+        {/* ── Bismillah banner ── */}
         {showBismillahBanner && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -418,6 +442,7 @@ export default function SurahPage() {
                   mode={mode}
                   index={idx}
                   bookmarked={isBookmarked(surahNum, ayah.numberInSurah)}
+                  showTransliteration={settings.showTransliteration}
                   onToggleBookmark={() =>
                     toggleBookmark({
                       surahNumber: surahNum,
@@ -439,7 +464,7 @@ export default function SurahPage() {
               className="mt-8 rounded-xl bg-secondary/40 border border-border px-4 py-3"
             >
               <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                Arabic: Uthmani script · English: Sahih International · Urdu: Fateh Muhammad Jalandhri
+                Arabic: Uthmani script · Urdu: Fateh Muhammad Jalandhri
                 <br />
                 <span className="text-muted-foreground/60">via AlQuran.cloud API</span>
               </p>

@@ -1,0 +1,132 @@
+Complete the implementation of every remaining non-functional setting in Rah-e-Safia. The goal is that no setting should display "Coming Soon." Every visible setting must perform its intended function and persist across app restarts.
+
+## Settings to Implement
+
+### 1. App Language
+
+* Make the entire UI language switchable.
+* Initially support:
+
+  * English
+  * Arabic
+* Structure the code so Urdu can be added later without refactoring.
+* Persist the selected language.
+
+---
+
+### 2. Quran Translation Language
+
+* Connect this setting to the Quran reader.
+* Allow switching between all installed translations.
+* Update immediately without requiring an app restart.
+* Remember the user's preferred translation.
+
+---
+
+### 3. Tafseer Language
+
+* If multiple Tafseer languages are available, allow switching between them.
+* If all current Tafaseer are English, automatically select English and remove the "Coming Soon" state.
+* Build the architecture so additional languages can be added easily later.
+
+---
+
+### 4. Manual Location Override
+
+* Allow users to:
+
+  * Search for a city.
+  * Select it manually.
+  * Save it.
+* Prayer Times and Qibla should use the manual location when enabled.
+* Users should also be able to switch back to automatic GPS location.
+
+---
+
+### 5. Madhhab
+
+Implement selectable Madhhab:
+
+* Shafi
+* Hanafi
+
+Update Asr prayer calculations accordingly and save the preference.
+
+---
+
+### 6. Prayer Calculation Method
+
+Provide selectable methods such as:
+
+* Muslim World League
+* Umm Al-Qura
+* Egyptian General Authority
+* Karachi
+* ISNA
+* University of Islamic Sciences, Karachi
+
+Changing the method should immediately refresh prayer times and persist the selection.
+
+---
+
+### 7. Prayer Reminder
+
+Allow users to choose:
+
+* At prayer time
+* 5 minutes before
+* 10 minutes before
+* 15 minutes before
+
+Store the preference even if notification scheduling is implemented separately.
+
+---
+
+### 8. Prayer Notifications
+
+Implement:
+
+* Master notification toggle.
+* Individual toggles for:
+
+  * Fajr
+  * Dhuhr
+  * Asr
+  * Maghrib
+  * Isha
+* Persist all notification preferences.
+* If browser notification permission has not been granted, request it gracefully and explain why it is needed.
+
+---
+
+### 9. Show Transliteration
+
+Connect this toggle to the Quran reader.
+
+When OFF:
+
+* Hide transliteration completely.
+
+When ON:
+
+* Display transliteration immediately.
+
+Persist the user's preference.
+
+---
+
+## General Requirements
+
+* Remove every "Coming Soon" label.
+* Every setting must have real functionality.
+* Persist all preferences using the existing settings storage.
+* Restore all settings automatically when the app starts.
+* Keep the UI responsive and consistent with the premium Rah-e-Safia design.
+* Do not break any existing features.
+
+After implementation provide:
+
+1. Every file modified.
+2. New services or utilities created.
+3. Settings persistence approach.
+4. Confirmation that every listed setting is now fully functional.

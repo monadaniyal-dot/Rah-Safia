@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme as useNextTheme } from "next-themes";
 import {
@@ -12,6 +12,7 @@ import {
   Clock,
   Globe2,
   Bell,
+  BellOff,
   BookMarked,
   HardDrive,
   Info,
@@ -25,29 +26,34 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
-  Lock,
   Compass,
   Languages,
   AlignJustify,
   RefreshCw,
   MapPin,
+  Search,
+  Loader2,
+  BellRing,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/use-settings";
-import { COLLECTIONS as TAFSEER_SOURCES } from "@/lib/hadith-api";
+import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  supportsNotifications,
+} from "@/lib/prayer-notifications";
+import {
+  getSavedLocation,
+  saveLocation,
+  clearSavedLocation,
+  forwardGeocodeCity,
+  type SavedLocation,
+} from "@/lib/location-store";
 
 const APP_VERSION = "1.0.0";
 
 // ─── Reusable primitives ─────────────────────────────────────────────────────
-
-function ComingSoonBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 shrink-0">
-      <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
-      Soon
-    </span>
-  );
-}
 
 function Toggle({
   value,
@@ -200,22 +206,22 @@ function SettingRow({
   icon: Icon,
   label,
   description,
-  comingSoon = false,
   children,
   vertical = false,
+  dim = false,
 }: {
   icon?: React.ElementType;
   label: string;
   description?: string;
-  comingSoon?: boolean;
   children?: ReactNode;
   vertical?: boolean;
+  dim?: boolean;
 }) {
   return (
     <div
       className={cn(
         "px-5 py-3.5",
-        comingSoon && "opacity-50",
+        dim && "opacity-50",
         vertical ? "flex flex-col gap-2.5" : "flex items-center justify-between gap-4"
       )}
     >
@@ -227,12 +233,9 @@ function SettingRow({
           />
         )}
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-foreground leading-tight">
-              {label}
-            </span>
-            {comingSoon && <ComingSoonBadge />}
-          </div>
+          <span className="text-sm font-medium text-foreground leading-tight">
+            {label}
+          </span>
           {description && (
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
               {description}
@@ -247,7 +250,7 @@ function SettingRow({
   );
 }
 
-// ─── Action button (Data section) ────────────────────────────────────────────
+// ─── Action button ────────────────────────────────────────────────────────────
 
 function ActionButton({
   label,
@@ -395,7 +398,7 @@ function ThemeSelector() {
   );
 }
 
-// ─── Translation options ──────────────────────────────────────────────────────
+// ─── Data options ─────────────────────────────────────────────────────────────
 
 const TRANSLATION_OPTIONS = [
   { value: "en.sahih", label: "Saheeh International" },
@@ -416,7 +419,7 @@ const CALCULATION_METHODS = [
   { value: "ISNA", label: "ISNA (North America)" },
   { value: "Egypt", label: "Egyptian General Authority" },
   { value: "Makkah", label: "Umm al-Qura (Makkah)" },
-  { value: "Karachi", label: "University of Islamic Sciences, Karachi" },
+  { value: "Karachi", label: "University of Karachi" },
 ];
 
 const MADHAB_OPTIONS = [
@@ -424,12 +427,22 @@ const MADHAB_OPTIONS = [
   { value: "hanafi", label: "Hanafi" },
 ];
 
-const LANGUAGE_OPTIONS = [
+const APP_LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ar", label: "العربية (Arabic)" },
+];
+
+const TRANSLATION_LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
   { value: "ur", label: "Urdu" },
-  { value: "ar", label: "Arabic" },
-  { value: "fr", label: "French" },
-  { value: "id", label: "Indonesian" },
+];
+
+const PRAYER_NOTIF_TOGGLES = [
+  { key: "fajrNotification" as const,    label: "Fajr",    arabic: "الفجر"  },
+  { key: "dhuhrNotification" as const,   label: "Dhuhr",   arabic: "الظهر"  },
+  { key: "asrNotification" as const,     label: "Asr",     arabic: "العصر"  },
+  { key: "maghribNotification" as const, label: "Maghrib", arabic: "المغرب" },
+  { key: "ishaNotification" as const,    label: "Isha",    arabic: "العشاء" },
 ];
 
 // ─── Main Settings Page ───────────────────────────────────────────────────────
@@ -439,21 +452,80 @@ export default function SettingsPage() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [clearDone, setClearDone] = useState<Record<string, boolean>>({});
 
+  // Notification permission state
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    () => getNotificationPermission()
+  );
+
+  // Manual location state
+  const [cityInput, setCityInput] = useState("");
+  const [cityLoading, setCityLoading] = useState(false);
+  const [cityError, setCityError] = useState("");
+  const [savedCity, setSavedCity] = useState<SavedLocation | null>(() => getSavedLocation());
+
+  // When autoLocation toggles ON, clear manual city
+  const handleAutoLocationToggle = (v: boolean) => {
+    update("autoLocation", v);
+    if (v) {
+      clearSavedLocation();
+      setSavedCity(null);
+      setCityInput("");
+      setCityError("");
+    }
+  };
+
+  // Request notification permission
+  async function handleRequestPermission() {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === "granted" && !settings.prayerNotifications) {
+      update("prayerNotifications", true);
+    }
+  }
+
+  // When prayerNotifications toggled on, prompt for permission if needed
+  const handlePrayerNotifToggle = async (v: boolean) => {
+    update("prayerNotifications", v);
+    if (v) {
+      const perm = await requestNotificationPermission();
+      setNotifPermission(perm);
+    }
+  };
+
+  // Re-check permission on mount (user may have changed in browser settings)
+  useEffect(() => {
+    if (supportsNotifications()) setNotifPermission(Notification.permission);
+  }, []);
+
+  // Manual city save
+  async function handleSaveCity() {
+    const q = cityInput.trim();
+    if (!q) return;
+    setCityError("");
+    setCityLoading(true);
+    try {
+      const loc = await forwardGeocodeCity(q);
+      saveLocation(loc);
+      setSavedCity(loc);
+      setCityInput("");
+    } catch (e: unknown) {
+      setCityError(e instanceof Error ? e.message : "City not found.");
+    } finally {
+      setCityLoading(false);
+    }
+  }
+
+  function handleClearLocation() {
+    clearSavedLocation();
+    setSavedCity(null);
+    setCityInput("");
+    setCityError("");
+  }
+
   function handleClear(key: string, action: () => void) {
     action();
     setClearDone((p) => ({ ...p, [key]: true }));
     setTimeout(() => setClearDone((p) => ({ ...p, [key]: false })), 2000);
-  }
-
-  function clearBookmarks() {
-    handleClear("bookmarks", () => {
-      localStorage.removeItem("rah-e-safia:bookmarks");
-      localStorage.removeItem("rah-e-safia:dua-bookmarks");
-    });
-  }
-
-  function clearHadithCache() {
-    handleClear("hadith", () => {});
   }
 
   function handleReset() {
@@ -468,15 +540,20 @@ export default function SettingsPage() {
 
   function handleShare() {
     if (navigator.share) {
-      navigator.share({
-        title: "Rah-e-Safia — Your Islamic Companion",
-        text: "A beautiful Islamic companion app with Quran, Hadith, Tafseer, Prayer Times, and more.",
-        url: window.location.origin,
-      }).catch(() => {});
+      navigator
+        .share({
+          title: "Rah-e-Safia — Your Islamic Companion",
+          text: "A beautiful Islamic companion app with Quran, Hadith, Tafseer, Prayer Times, and more.",
+          url: window.location.origin,
+        })
+        .catch(() => {});
     } else {
       navigator.clipboard.writeText(window.location.origin).catch(() => {});
     }
   }
+
+  const notifGranted = notifPermission === "granted";
+  const notifDenied = notifPermission === "denied";
 
   return (
     <div className="min-h-full flex flex-col">
@@ -511,7 +588,7 @@ export default function SettingsPage() {
           </div>
           <h2 className="text-2xl font-bold text-foreground">Preferences</h2>
           <p className="font-arabic text-muted-foreground text-base mt-0.5" dir="rtl">
-            الإعدادات
+            الإعدادات والتفضيلات
           </p>
         </motion.div>
 
@@ -525,7 +602,7 @@ export default function SettingsPage() {
             icon={AlignJustify}
             label="Compact Mode"
             description="Reduce spacing for more content on screen"
-            comingSoon
+            dim
           >
             <Toggle value={settings.compactMode} onChange={() => {}} disabled />
           </SettingRow>
@@ -581,7 +658,7 @@ export default function SettingsPage() {
           <SettingRow
             icon={BookOpen}
             label="Default Translation"
-            description="Shown when reading Quran"
+            description="English translation shown when reading Quran"
           >
             <SelectField
               value={settings.defaultTranslation}
@@ -606,16 +683,18 @@ export default function SettingsPage() {
             icon={Languages}
             label="Show Transliteration"
             description="Display romanized pronunciation alongside Arabic"
-            comingSoon
           >
-            <Toggle value={settings.showTransliteration} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.showTransliteration}
+              onChange={(v) => update("showTransliteration", v)}
+            />
           </SettingRow>
 
           <SettingRow
             icon={BookMarked}
             label="Remember Last Position"
             description="Resume from where you left off"
-            comingSoon
+            dim
           >
             <Toggle value={settings.rememberLastPosition} onChange={() => {}} disabled />
           </SettingRow>
@@ -623,131 +702,253 @@ export default function SettingsPage() {
 
         {/* ── Prayer Settings ── */}
         <SectionCard icon={Clock} title="Prayer Times" description="Notifications and calculation">
+
+          {/* Prayer Notifications master toggle */}
           <SettingRow
             icon={Bell}
             label="Prayer Notifications"
-            description="Receive an alert at each prayer time"
-            comingSoon
+            description="Receive a browser alert at each prayer time"
           >
-            <Toggle value={settings.prayerNotifications} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.prayerNotifications}
+              onChange={handlePrayerNotifToggle}
+            />
           </SettingRow>
 
+          {/* Notification permission status */}
+          <AnimatePresence>
+            {settings.prayerNotifications && (
+              <motion.div
+                key="notif-status"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                {notifGranted ? (
+                  /* ── Per-prayer toggles ── */
+                  <div className="px-5 py-3 bg-primary/4 border-t border-border/50">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                      <BellRing className="w-3 h-3" strokeWidth={2} />
+                      Individual Prayer Alerts
+                    </p>
+                    <div className="space-y-1">
+                      {PRAYER_NOTIF_TOGGLES.map(({ key, label, arabic }) => (
+                        <div key={key} className="flex items-center justify-between py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-arabic text-sm text-muted-foreground" dir="rtl">{arabic}</span>
+                            <span className="text-sm text-foreground font-medium">{label}</span>
+                          </div>
+                          <Toggle
+                            value={settings[key]}
+                            onChange={(v) => update(key, v)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : notifDenied ? (
+                  /* ── Blocked message ── */
+                  <div className="px-5 py-3 bg-amber-50 dark:bg-amber-900/15 border-t border-border/50 flex items-start gap-2.5">
+                    <BellOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" strokeWidth={1.8} />
+                    <div>
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                        Notifications blocked
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        Please allow notifications in your browser settings, then come back to enable them.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Request permission ── */
+                  <div className="px-5 py-3 bg-secondary/40 border-t border-border/50 flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground flex-1 leading-snug">
+                      Grant permission to receive prayer time notifications in your browser.
+                    </p>
+                    <button
+                      onClick={handleRequestPermission}
+                      className="shrink-0 px-3 py-1.5 rounded-lg gradient-primary text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      Allow
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Prayer Reminder */}
           <SettingRow
             icon={Clock}
             label="Prayer Reminder"
-            description="Minutes before the prayer begins"
-            comingSoon
+            description="How far ahead to notify before prayer"
           >
-            <div className="flex gap-1.5">
-              {([5, 10, 15] as const).map((m) => (
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              {([0, 5, 10, 15] as const).map((m) => (
                 <button
                   key={m}
-                  disabled
+                  onClick={() => update("prayerReminderMinutes", m)}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all disabled:cursor-not-allowed",
+                    "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all",
                     settings.prayerReminderMinutes === m
-                      ? "gradient-primary text-white border-transparent"
-                      : "bg-secondary text-muted-foreground border-border"
+                      ? "gradient-primary text-white border-transparent shadow-sm"
+                      : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
                   )}
                 >
-                  {m}m
+                  {m === 0 ? "At time" : `${m}m`}
                 </button>
               ))}
             </div>
           </SettingRow>
 
+          {/* Calculation Method */}
           <SettingRow
             icon={Globe2}
             label="Calculation Method"
             description="Islamic authority for prayer time calculation"
-            comingSoon
           >
             <SelectField
               value={settings.calculationMethod}
-              onChange={() => {}}
+              onChange={(v) => update("calculationMethod", v)}
               options={CALCULATION_METHODS}
-              disabled
             />
           </SettingRow>
 
+          {/* Madhab */}
           <SettingRow
             icon={BookOpen}
             label="Madhab (Asr time)"
-            description="Affects Asr prayer calculation"
-            comingSoon
+            description="Affects Asr prayer shadow-factor calculation"
           >
             <SelectField
               value={settings.madhab}
-              onChange={() => {}}
+              onChange={(v) => update("madhab", v)}
               options={MADHAB_OPTIONS}
-              disabled
             />
           </SettingRow>
 
+          {/* Auto Location */}
           <SettingRow
             icon={MapPin}
             label="Auto Location Detection"
-            description="Use device GPS for accurate prayer times"
+            description="Use device GPS for accurate prayer times and Qibla"
           >
             <Toggle
               value={settings.autoLocation}
-              onChange={(v) => update("autoLocation", v)}
+              onChange={handleAutoLocationToggle}
             />
           </SettingRow>
 
-          <SettingRow
-            icon={MapPin}
-            label="Manual Location Override"
-            description="Set a specific city or coordinates"
-            comingSoon
-          />
+          {/* Manual Location Override — visible when autoLocation is off */}
+          <AnimatePresence>
+            {!settings.autoLocation && (
+              <motion.div
+                key="manual-loc"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-5 py-3.5 border-t border-border/50 bg-secondary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Compass className="w-4 h-4 text-muted-foreground shrink-0" strokeWidth={1.8} />
+                    <span className="text-sm font-medium text-foreground">Manual Location</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mb-3">
+                    Enter your city to calculate prayer times and Qibla direction without GPS.
+                  </p>
+
+                  {/* Saved city chip */}
+                  {savedCity && (
+                    <div className="flex items-center gap-2 mb-2.5 px-3 py-1.5 rounded-xl bg-primary/8 border border-primary/20 w-fit">
+                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" strokeWidth={2} />
+                      <span className="text-xs font-medium text-primary truncate max-w-[200px]">{savedCity.cityName}</span>
+                      <button
+                        onClick={handleClearLocation}
+                        className="text-primary/60 hover:text-primary transition-colors ml-0.5"
+                        aria-label="Clear location"
+                      >
+                        <X className="w-3 h-3" strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* City search */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={cityInput}
+                      onChange={(e) => { setCityInput(e.target.value); setCityError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveCity()}
+                      placeholder={savedCity ? "Change city…" : "e.g. London, Karachi, Dubai"}
+                      className="flex-1 text-xs rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      onClick={handleSaveCity}
+                      disabled={cityLoading || !cityInput.trim()}
+                      className="px-3 py-2 rounded-lg gradient-primary text-white text-xs font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity flex items-center gap-1.5"
+                    >
+                      {cityLoading
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Search className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {cityError && <p className="text-[11px] text-destructive mt-1.5">{cityError}</p>}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SectionCard>
 
         {/* ── Language ── */}
-        <SectionCard icon={Globe2} title="Language" description="Content and app language">
+        <SectionCard icon={Globe2} title="Language" description="Interface and content language">
+
+          {/* App Language */}
           <SettingRow
             icon={Globe2}
             label="App Language"
-            description="Interface language"
-            comingSoon
+            description="Changes interface direction and navigation labels"
           >
             <SelectField
               value={settings.appLanguage}
-              onChange={() => {}}
-              options={LANGUAGE_OPTIONS}
-              disabled
+              onChange={(v) => update("appLanguage", v)}
+              options={APP_LANGUAGE_OPTIONS}
             />
           </SettingRow>
 
+          {/* Quran Translation Language */}
           <SettingRow
             icon={BookOpen}
-            label="Quran Translation Language"
-            description="Language for Quran translations"
-            comingSoon
+            label="Quran Translation"
+            description="Default translation language shown in the Quran reader"
           >
             <SelectField
               value={settings.translationLanguage}
-              onChange={() => {}}
-              options={LANGUAGE_OPTIONS}
-              disabled
+              onChange={(v) => update("translationLanguage", v)}
+              options={TRANSLATION_LANGUAGE_OPTIONS}
             />
           </SettingRow>
 
+          {/* Tafseer Language */}
           <SettingRow
             icon={BookMarked}
             label="Tafseer Language"
-            description="Future-ready for multi-language tafseers"
-            comingSoon
-          />
+            description="All available commentaries are currently in English"
+          >
+            <span className="text-xs text-muted-foreground bg-secondary px-2.5 py-1 rounded-lg border border-border">
+              English
+            </span>
+          </SettingRow>
         </SectionCard>
 
         {/* ── Notifications ── */}
-        <SectionCard icon={Bell} title="Notifications" description="Daily reminders and alerts">
+        <SectionCard icon={Bell} title="Reminders" description="Daily reminders and alerts">
           <SettingRow
             icon={Bell}
             label="Daily Ayah"
             description="Receive a new verse each morning"
-            comingSoon
+            dim
           >
             <Toggle value={settings.dailyReflectionNotification} onChange={() => {}} disabled />
           </SettingRow>
@@ -756,7 +957,7 @@ export default function SettingsPage() {
             icon={Bell}
             label="Daily Dua"
             description="Receive a daily supplication reminder"
-            comingSoon
+            dim
           >
             <Toggle value={settings.dailyDuaNotification} onChange={() => {}} disabled />
           </SettingRow>
@@ -765,7 +966,7 @@ export default function SettingsPage() {
             icon={Bell}
             label="Daily Inspiration Reminder"
             description="Get a daily Dua or Dhikr reminder"
-            comingSoon
+            dim
           >
             <Toggle value={settings.dailyInspirationReminder} onChange={() => {}} disabled />
           </SettingRow>
@@ -774,7 +975,7 @@ export default function SettingsPage() {
             icon={Clock}
             label="Reminder Time"
             description="What time to send daily reminders"
-            comingSoon
+            dim
           >
             <span className="text-xs font-mono text-muted-foreground bg-secondary px-2.5 py-1 rounded-lg">
               {settings.reminderTime}
@@ -788,7 +989,7 @@ export default function SettingsPage() {
             icon={BookOpen}
             label="Resume Last Read"
             description="Open Quran where you left off"
-            comingSoon
+            dim
           >
             <Toggle value={settings.resumeLastRead} onChange={() => {}} disabled />
           </SettingRow>
@@ -797,7 +998,7 @@ export default function SettingsPage() {
             icon={Monitor}
             label="Keep Screen Awake"
             description="Prevent screen from sleeping while reading"
-            comingSoon
+            dim
           >
             <Toggle value={settings.keepScreenAwake} onChange={() => {}} disabled />
           </SettingRow>
@@ -817,7 +1018,7 @@ export default function SettingsPage() {
             icon={BookOpen}
             label="Highlight Last Read Verse"
             description="Visually mark where you last stopped reading"
-            comingSoon
+            dim
           >
             <Toggle value={settings.highlightLastReadVerse} onChange={() => {}} disabled />
           </SettingRow>
@@ -836,6 +1037,7 @@ export default function SettingsPage() {
                   "rah-e-safia:bookmarks",
                   "rah-e-safia:dua-bookmarks",
                   "rah-e-safia:reading-progress",
+                  "rah-e-safia:saved-location",
                 ];
                 Object.keys(localStorage)
                   .filter((k) => k.startsWith("rah-e-safia:") && !preserve.includes(k))
@@ -881,7 +1083,12 @@ export default function SettingsPage() {
             label="Clear Bookmarks Cache"
             description="Removes all saved ayahs and duas"
             icon={Trash2}
-            onClick={clearBookmarks}
+            onClick={() =>
+              handleClear("bookmarks", () => {
+                localStorage.removeItem("rah-e-safia:bookmarks");
+                localStorage.removeItem("rah-e-safia:dua-bookmarks");
+              })
+            }
             done={clearDone["bookmarks"]}
           />
           <div className="border-t border-border/50">
@@ -921,11 +1128,11 @@ export default function SettingsPage() {
             <p className="text-xs font-medium text-muted-foreground mb-2">Data Sources</p>
             <div className="space-y-1">
               {[
-                "Quran — Quran.com API (quran.com)",
+                "Quran — AlQuran.cloud API (alquran.cloud)",
                 "Hadith — fawazahmed0/hadith-api (jsDelivr CDN)",
                 "Tafseer — Quran.com API v4",
-                "Prayer Times — Solar calculation (Makkah fallback)",
-                "99 Names — Open Islamic dataset",
+                "Prayer Times — Aladhan API (aladhan.com)",
+                "Geocoding — Nominatim / OpenStreetMap",
               ].map((s) => (
                 <p key={s} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
                   <span className="text-primary mt-0.5">•</span>

@@ -5,6 +5,7 @@ import { MoreHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/constants";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { useAppLanguage } from "@/lib/i18n";
 
 const PRIMARY_IDS = ["home", "prayer", "quran", "hadith"];
 const primaryItems = navItems.filter((n) => PRIMARY_IDS.includes(n.id));
@@ -13,6 +14,8 @@ const moreItems = navItems.filter((n) => !PRIMARY_IDS.includes(n.id));
 export default function BottomNav() {
   const [location, navigate] = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const lang = useAppLanguage();
+  const isArabic = lang === "ar";
 
   const isMoreActive = moreItems.some((n) => n.path === location);
 
@@ -115,20 +118,23 @@ export default function BottomNav() {
                       <span
                         className={cn(
                           "text-sm font-medium block leading-tight",
-                          isActive ? "text-primary-foreground" : "text-foreground"
+                          isActive ? "text-primary-foreground" : "text-foreground",
+                          isArabic && "font-arabic"
                         )}
                       >
-                        {item.label}
+                        {isArabic ? item.arabicLabel : item.label}
                       </span>
-                      <span
-                        className={cn(
-                          "font-arabic text-[11px] block leading-tight mt-0.5",
-                          isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-                        )}
-                        dir="rtl"
-                      >
-                        {item.arabicLabel}
-                      </span>
+                      {!isArabic && (
+                        <span
+                          className={cn(
+                            "font-arabic text-[11px] block leading-tight mt-0.5",
+                            isActive ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}
+                          dir="rtl"
+                        >
+                          {item.arabicLabel}
+                        </span>
+                      )}
                     </div>
                   </motion.button>
                 );
@@ -182,10 +188,13 @@ export default function BottomNav() {
                 <span
                   className={cn(
                     "text-[10px] font-medium leading-none transition-colors duration-200",
-                    isActive ? "text-primary" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-muted-foreground",
+                    isArabic && "font-arabic"
                   )}
                 >
-                  {item.id === "home" ? "Home" : item.label.split(" ")[0]}
+                  {isArabic
+                    ? item.arabicLabel.split(" ")[0]
+                    : (item.id === "home" ? "Home" : item.label.split(" ")[0])}
                 </span>
               </button>
             );

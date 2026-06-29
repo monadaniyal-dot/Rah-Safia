@@ -1,7 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Compass, MapPin, LocateFixed, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/lib/use-settings";
+import { getSavedLocation } from "@/lib/location-store";
 
 const KAABA = { lat: 21.4225, lon: 39.8262 };
 
@@ -41,7 +43,20 @@ type State =
   | { status: "ready"; lat: number; lon: number; qibla: number };
 
 export default function QiblaFinderPage() {
+  const { settings } = useSettings();
   const [state, setState] = useState<State>({ status: "idle" });
+
+  // On mount: if auto-location is off and we have a saved location, compute qibla directly
+  useEffect(() => {
+    if (!settings.autoLocation) {
+      const saved = getSavedLocation();
+      if (saved) {
+        const qibla = calcQibla(saved.lat, saved.lon);
+        setState({ status: "ready", lat: saved.lat, lon: saved.lon, qibla });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {

@@ -4,9 +4,12 @@ import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/constants";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { Heart } from "lucide-react";
+import { useAppLanguage } from "@/lib/i18n";
 
 export default function Sidebar() {
   const [location, navigate] = useLocation();
+  const lang = useAppLanguage();
+  const isArabic = lang === "ar";
 
   return (
     <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 border-r border-border bg-card overflow-hidden">
@@ -69,18 +72,24 @@ export default function Sidebar() {
                 />
               </span>
               <div className="flex-1 min-w-0">
-                <span className={cn("text-sm font-medium block leading-tight", isActive ? "text-primary-foreground" : "")}>
-                  {item.label}
+                <span className={cn(
+                  "text-sm font-medium block leading-tight",
+                  isActive ? "text-primary-foreground" : "",
+                  isArabic && "font-arabic"
+                )}>
+                  {isArabic ? item.arabicLabel : item.label}
                 </span>
-                <span
-                  className={cn(
-                    "font-arabic text-xs block leading-tight",
-                    isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-                  )}
-                  dir="rtl"
-                >
-                  {item.arabicLabel}
-                </span>
+                {!isArabic && (
+                  <span
+                    className={cn(
+                      "font-arabic text-xs block leading-tight",
+                      isActive ? "text-primary-foreground/70" : "text-muted-foreground"
+                    )}
+                    dir="rtl"
+                  >
+                    {item.arabicLabel}
+                  </span>
+                )}
               </div>
               {isActive && (
                 <motion.div
