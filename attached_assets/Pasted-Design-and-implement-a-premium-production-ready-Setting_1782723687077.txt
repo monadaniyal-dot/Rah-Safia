@@ -1,0 +1,168 @@
+Design and implement a premium, production-ready Settings page for Rah-e-Safia.
+
+## Objective
+
+Create a clean, elegant, modern Settings page that matches the premium design language of Rah-e-Safia while keeping the interface simple, organized, and easy to navigate.
+
+The page should feel comparable to the settings experience of high-quality Islamic applications.
+
+---
+
+## Navigation
+
+* Add a Settings option to the existing navigation.
+* Preserve all existing navigation behaviour.
+* Fully responsive for mobile, tablet and desktop.
+
+---
+
+# Section 1 — Quran Reading
+
+Include:
+
+• Default Translation
+• Default Tafseer
+• Arabic Font Size (slider)
+• Translation Font Size (slider)
+• Show Transliteration (toggle)
+• Resume Last Reading Automatically (toggle)
+
+Persist all settings.
+
+---
+
+# Section 2 — Prayer
+
+Include:
+
+• Prayer Notifications (Coming Soon if not yet implemented)
+• Reminder Before Prayer
+- 5 min
+- 10 min
+- 15 min
+• Prayer Calculation Method
+• Madhab Selection
+• Automatic Location
+• Manual Location
+
+Disable controls that depend on future features while keeping the UI complete.
+
+---
+
+# Section 3 — Appearance
+
+Include:
+
+• System Theme
+• Light Mode
+• Dark Mode
+
+(Optional)
+
+• Compact Layout
+
+Remember the user's choice.
+
+---
+
+# Section 4 — Language
+
+Include:
+
+• App Language
+• Quran Translation
+• Preferred Tafseer
+
+Design the page so additional languages can be added later.
+
+---
+
+# Section 5 — Daily Features
+
+Include:
+
+• Daily Reflection Notification
+• Daily Dua Notification
+• Daily Inspiration Reminder
+
+If notifications are not implemented, display them as "Coming Soon" with disabled controls.
+
+---
+
+# Section 6 — Reading Experience
+
+Include:
+
+• Keep Screen Awake While Reading
+• Smooth Scrolling
+• Highlight Last Read Verse
+
+Persist all supported settings.
+
+---
+
+# Section 7 — Storage & Data
+
+Include:
+
+• Clear Cache
+• Refresh Quran Data
+• Refresh Hadith Data
+• Refresh Tafseer Data
+• Reset All Settings
+
+Require confirmation before destructive actions.
+
+---
+
+# Section 8 — About Rah-e-Safia
+
+Include:
+
+• App Version
+• Developer Information
+• Data Sources
+• Privacy Policy
+• Terms & Conditions
+• Contact Us
+• Share Rah-e-Safia
+• Rate the App
+
+Use clean cards and external links where appropriate.
+
+---
+
+## Design Requirements
+
+* Match the current Rah-e-Safia premium green theme.
+* Premium card layout.
+* Excellent spacing.
+* Clear typography hierarchy.
+* Consistent icons.
+* Smooth transitions.
+* Mobile-first responsive design.
+* Maintain accessibility and readability.
+* Avoid overcrowding.
+* Use expandable groups if necessary to reduce scrolling.
+
+---
+
+## Technical Requirements
+
+* Store user preferences locally.
+* Automatically restore preferences on app launch.
+* Create reusable settings components where appropriate.
+* Keep the code modular and maintainable.
+* Do not break any existing functionality.
+
+---
+
+## Final Verification
+
+After implementation provide:
+
+1. Files created or modified.
+2. Components created.
+3. Settings that are fully functional.
+4. Settings marked as Coming Soon.
+5. Confirmation that all preferences persist after restarting the app.

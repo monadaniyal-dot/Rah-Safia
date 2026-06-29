@@ -762,6 +762,15 @@ export default function SettingsPage() {
           </SettingRow>
 
           <SettingRow
+            icon={Bell}
+            label="Daily Inspiration Reminder"
+            description="Get a daily Dua or Dhikr reminder"
+            comingSoon
+          >
+            <Toggle value={settings.dailyInspirationReminder} onChange={() => {}} disabled />
+          </SettingRow>
+
+          <SettingRow
             icon={Clock}
             label="Reminder Time"
             description="What time to send daily reminders"
@@ -803,16 +812,70 @@ export default function SettingsPage() {
               onChange={(v) => update("smoothScrolling", v)}
             />
           </SettingRow>
+
+          <SettingRow
+            icon={BookOpen}
+            label="Highlight Last Read Verse"
+            description="Visually mark where you last stopped reading"
+            comingSoon
+          >
+            <Toggle value={settings.highlightLastReadVerse} onChange={() => {}} disabled />
+          </SettingRow>
         </SectionCard>
 
         {/* ── Data Management ── */}
         <SectionCard icon={HardDrive} title="Data & Storage" description="Cache and preferences">
+          <ActionButton
+            label="Clear Cache"
+            description="Clears all locally cached app data"
+            icon={Trash2}
+            onClick={() =>
+              handleClear("cache", () => {
+                const preserve = [
+                  "rah-e-safia:settings",
+                  "rah-e-safia:bookmarks",
+                  "rah-e-safia:dua-bookmarks",
+                  "rah-e-safia:reading-progress",
+                ];
+                Object.keys(localStorage)
+                  .filter((k) => k.startsWith("rah-e-safia:") && !preserve.includes(k))
+                  .forEach((k) => localStorage.removeItem(k));
+              })
+            }
+            done={clearDone["cache"]}
+          />
+          <ActionButton
+            label="Refresh Quran Data"
+            description="Re-fetches Quran text and translations"
+            icon={RefreshCw}
+            onClick={() =>
+              handleClear("quran", () => {
+                Object.keys(localStorage)
+                  .filter((k) => k.startsWith("rah-e-safia:quran"))
+                  .forEach((k) => localStorage.removeItem(k));
+              })
+            }
+            done={clearDone["quran"]}
+          />
           <ActionButton
             label="Refresh Hadith Data"
             description="Hadith data is cached for this session"
             icon={RefreshCw}
             onClick={() => handleClear("hadith", () => window.location.reload())}
             done={clearDone["hadith"]}
+          />
+          <ActionButton
+            label="Refresh Tafseer Data"
+            description="Re-fetches commentary from Quran.com API"
+            icon={RefreshCw}
+            onClick={() =>
+              handleClear("tafseer", () => {
+                Object.keys(localStorage)
+                  .filter((k) => k.startsWith("rah-e-safia:tafseer"))
+                  .forEach((k) => localStorage.removeItem(k));
+              })
+            }
+            done={clearDone["tafseer"]}
           />
           <ActionButton
             label="Clear Bookmarks Cache"

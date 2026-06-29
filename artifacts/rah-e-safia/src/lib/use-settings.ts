@@ -18,10 +18,12 @@ export interface AppSettings {
   translationLanguage: string;
   dailyReflectionNotification: boolean;
   dailyDuaNotification: boolean;
+  dailyInspirationReminder: boolean;
   reminderTime: string;
   resumeLastRead: boolean;
   keepScreenAwake: boolean;
   smoothScrolling: boolean;
+  highlightLastReadVerse: boolean;
   compactMode: boolean;
 }
 
@@ -41,10 +43,12 @@ export const SETTINGS_DEFAULTS: AppSettings = {
   translationLanguage: "en",
   dailyReflectionNotification: false,
   dailyDuaNotification: false,
+  dailyInspirationReminder: false,
   reminderTime: "07:00",
   resumeLastRead: true,
   keepScreenAwake: false,
   smoothScrolling: true,
+  highlightLastReadVerse: false,
   compactMode: false,
 };
 
