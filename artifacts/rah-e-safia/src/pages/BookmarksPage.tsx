@@ -1,14 +1,21 @@
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Trash2, ExternalLink, BookOpen, HandHeart } from "lucide-react";
+import {
+  Bookmark, Trash2, ExternalLink, BookOpen, HandHeart,
+  Play, Pause, Loader2,
+} from "lucide-react";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useDuaBookmarks } from "@/lib/dua-bookmarks";
+import { useQuranPlayer } from "@/context/QuranPlayerContext";
+import { surahs } from "@/lib/quran-data";
 import { cn } from "@/lib/utils";
+import SoundBars from "@/components/quran/SoundBars";
 
 export default function BookmarksPage() {
   const [, navigate] = useLocation();
   const { bookmarks, removeBookmark } = useBookmarks();
   const { duaBookmarks, removeDuaBookmark } = useDuaBookmarks();
+  const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
 
   const sorted = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
   const sortedDuas = [...duaBookmarks].sort((a, b) => b.timestamp - a.timestamp);
@@ -25,6 +32,23 @@ export default function BookmarksPage() {
     if (sortedDuas.length > 0) parts.push(`${sortedDuas.length} dua${sortedDuas.length === 1 ? "" : "s"}`);
     return parts.join(" · ");
   };
+
+  function isThisAyahPlaying(surahNumber: number, ayahNumber: number) {
+    return (
+      playerState.surahNumber === surahNumber &&
+      playerState.ayahNumber === ayahNumber
+    );
+  }
+
+  function handlePlay(surahNumber: number, ayahNumber: number, surahName: string, surahArabicName: string) {
+    if (isThisAyahPlaying(surahNumber, ayahNumber)) {
+      togglePlayPause();
+    } else {
+      const meta = surahs.find((s) => s.number === surahNumber);
+      const totalAyahs = meta?.verses ?? 0;
+      playAyah(surahNumber, ayahNumber, surahName, surahArabicName, totalAyahs);
+    }
+  }
 
   return (
     <div className="min-h-full flex flex-col">
@@ -92,66 +116,141 @@ export default function BookmarksPage() {
 
             <div className="space-y-3">
               <AnimatePresence initial={false}>
-                {sorted.map((bookmark, idx) => (
-                  <motion.div
-                    key={bookmark.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.22, delay: idx * 0.03 }}
-                    layout
-                    className="rounded-2xl border border-primary/12 bg-card shadow-sm"
-                  >
-                    {/* Card header */}
-                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-sm shrink-0">
-                          <span className="text-white text-xs font-bold">{bookmark.ayahNumber}</span>
+                {sorted.map((bookmark, idx) => {
+                  const playing = isThisAyahPlaying(bookmark.surahNumber, bookmark.ayahNumber);
+                  const thisIsLoading = playing && playerState.isLoading;
+                  const thisIsPlaying = playing && playerState.isPlaying;
+
+                  return (
+                    <motion.div
+                      key={bookmark.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.22, delay: idx * 0.03 }}
+                      layout
+                      className={cn(
+                        "rounded-2xl border shadow-sm overflow-hidden transition-all duration-400",
+                        playing
+                          ? "border-primary/50 bg-card ring-1 ring-primary/20"
+                          : "border-primary/12 bg-card"
+                      )}
+                    >
+                      {/* Playing indicator strip */}
+                      <AnimatePresence>
+                        {playing && (
+                          <motion.div
+                            key="playing-strip"
+                            initial={{ scaleX: 0, opacity: 0 }}
+                            animate={{ scaleX: 1, opacity: 1 }}
+                            exit={{ scaleX: 0, opacity: 0 }}
+                            transition={{ duration: 0.4, ease: "easeOut" }}
+                            className="h-0.5 w-full bg-gradient-to-r from-primary/40 via-primary to-primary/40 origin-left"
+                          />
+                        )}
+                      </AnimatePresence>
+
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={cn(
+                            "w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 transition-all duration-300",
+                            "gradient-primary"
+                          )}>
+                            {thisIsPlaying ? (
+                              <SoundBars className="text-white" />
+                            ) : (
+                              <span className="text-white text-xs font-bold">{bookmark.ayahNumber}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                                {bookmark.surahName}
+                              </p>
+                              {playing && (
+                                <span className="shrink-0 text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-primary/20">
+                                  Now playing
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-tight">
+                              Surah {bookmark.surahNumber} · Ayah {bookmark.ayahNumber}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground leading-tight truncate">
-                            {bookmark.surahName}
-                          </p>
-                          <p className="text-xs text-muted-foreground leading-tight">
-                            Surah {bookmark.surahNumber} · Ayah {bookmark.ayahNumber}
-                          </p>
-                        </div>
+                        <p className="font-arabic text-base text-primary/70 shrink-0 ml-2" dir="rtl">
+                          {bookmark.surahArabicName}
+                        </p>
                       </div>
-                      <p className="font-arabic text-base text-primary/70 shrink-0 ml-2" dir="rtl">
-                        {bookmark.surahArabicName}
-                      </p>
-                    </div>
 
-                    {/* Arabic preview */}
-                    <div className="px-4 pb-3">
-                      <p
-                        className="font-arabic text-xl text-foreground leading-[2] text-right line-clamp-2"
-                        dir="rtl"
-                        lang="ar"
-                      >
-                        {bookmark.arabicText}
-                      </p>
-                    </div>
+                      {/* Arabic preview */}
+                      <div className="px-4 pb-3">
+                        <p
+                          className="font-arabic text-xl text-foreground leading-[2] text-right line-clamp-2"
+                          dir="rtl"
+                          lang="ar"
+                        >
+                          {bookmark.arabicText}
+                        </p>
+                      </div>
 
-                    {/* Actions */}
-                    <div className={cn("flex items-center gap-2 px-4 pb-4")}>
-                      <button
-                        onClick={() => navigate(`/quran/${bookmark.surahNumber}`)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/8 hover:bg-primary/14 text-primary text-xs font-semibold transition-colors duration-200"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" strokeWidth={2} />
-                        Open Surah
-                      </button>
-                      <button
-                        onClick={() => removeBookmark(bookmark.id)}
-                        className="w-9 h-9 rounded-xl bg-destructive/8 hover:bg-destructive/16 flex items-center justify-center transition-colors duration-200 shrink-0"
-                        aria-label="Remove bookmark"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" strokeWidth={2} />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 px-4 pb-4">
+                        {/* Play from here */}
+                        <motion.button
+                          whileTap={{ scale: 0.93 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                          onClick={() => handlePlay(
+                            bookmark.surahNumber,
+                            bookmark.ayahNumber,
+                            bookmark.surahName,
+                            bookmark.surahArabicName,
+                          )}
+                          className={cn(
+                            "flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-200 shrink-0",
+                            playing
+                              ? "gradient-primary text-white shadow-sm"
+                              : "bg-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                          )}
+                          aria-label={thisIsPlaying ? "Pause" : "Play from this ayah"}
+                        >
+                          {thisIsLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+                          ) : thisIsPlaying ? (
+                            <>
+                              <Pause className="w-3.5 h-3.5" strokeWidth={2.5} />
+                              <span>Pause</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5 ml-0.5" strokeWidth={2.5} />
+                              <span>Play here</span>
+                            </>
+                          )}
+                        </motion.button>
+
+                        {/* Open Surah */}
+                        <button
+                          onClick={() => navigate(`/quran/${bookmark.surahNumber}`)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/8 hover:bg-primary/14 text-primary text-xs font-semibold transition-colors duration-200"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" strokeWidth={2} />
+                          Open Surah
+                        </button>
+
+                        {/* Remove */}
+                        <button
+                          onClick={() => removeBookmark(bookmark.id)}
+                          className="w-9 h-9 rounded-xl bg-destructive/8 hover:bg-destructive/16 flex items-center justify-center transition-colors duration-200 shrink-0"
+                          aria-label="Remove bookmark"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           </div>
