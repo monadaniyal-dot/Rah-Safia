@@ -1,15 +1,20 @@
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/constants";
 import ThemeToggle from "@/components/ui/ThemeToggle";
-import { Heart } from "lucide-react";
+import { Heart, Music2 } from "lucide-react";
 import { useAppLanguage } from "@/lib/i18n";
+import { useQuranPlayer } from "@/context/QuranPlayerContext";
+import SoundBars from "@/components/quran/SoundBars";
 
 export default function Sidebar() {
   const [location, navigate] = useLocation();
   const lang = useAppLanguage();
   const isArabic = lang === "ar";
+  const { state: playerState, openFullPlayer } = useQuranPlayer();
+
+  const playerActive = playerState.surahNumber !== null;
 
   return (
     <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 border-r border-border bg-card overflow-hidden">
@@ -101,6 +106,73 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* ── Now Playing card ── */}
+      <AnimatePresence>
+        {playerActive && (
+          <motion.div
+            key="sidebar-now-playing"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ type: "spring", stiffness: 340, damping: 30 }}
+            className="px-3 pb-3"
+          >
+            <button
+              onClick={openFullPlayer}
+              className={cn(
+                "w-full text-left rounded-xl overflow-hidden border border-primary/25",
+                "bg-primary/6 hover:bg-primary/12 transition-colors duration-200 group"
+              )}
+              aria-label="Open full player"
+            >
+              {/* Animated green top strip */}
+              <div className="h-[3px] w-full gradient-primary" />
+
+              <div className="p-3 flex items-center gap-2.5">
+                {/* Icon / SoundBars */}
+                <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shrink-0 shadow-sm">
+                  {playerState.isPlaying ? (
+                    <SoundBars className="text-white" />
+                  ) : (
+                    <Music2 className="w-4 h-4 text-white" strokeWidth={1.8} />
+                  )}
+                </div>
+
+                {/* Surah info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-bold text-primary/70 uppercase tracking-widest mb-0.5">
+                    Now Playing
+                  </p>
+                  <p className="text-xs font-semibold text-foreground leading-tight truncate">
+                    {playerState.surahName}
+                  </p>
+                  <p className="font-arabic text-xs text-muted-foreground leading-tight truncate" dir="rtl">
+                    {playerState.surahArabicName}
+                  </p>
+                </div>
+
+                {/* Ayah badge */}
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  <span className="text-[10px] font-mono font-semibold bg-primary/12 text-primary px-1.5 py-0.5 rounded-md leading-none">
+                    {playerState.ayahNumber}/{playerState.totalAyahs}
+                  </span>
+                </div>
+              </div>
+
+              {/* Reciter row */}
+              <div className="px-3 pb-2.5 flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {playerState.reciter.name}
+                </p>
+                <span className="text-[9px] text-primary/60 font-medium shrink-0 group-hover:text-primary transition-colors">
+                  Open ↗
+                </span>
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom section */}
       <div className="px-4 py-4 border-t border-border space-y-3">

@@ -24,7 +24,7 @@ function AppShellInner({ children }: AppShellProps) {
         <div
           className={
             playerActive
-              ? "flex-1 pb-[148px] lg:pb-[76px] overflow-y-auto"
+              ? "flex-1 pb-[176px] lg:pb-[76px] overflow-y-auto"
               : "flex-1 pb-20 lg:pb-0 overflow-y-auto"
           }
         >

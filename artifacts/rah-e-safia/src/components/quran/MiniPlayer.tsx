@@ -26,7 +26,7 @@ export default function MiniPlayer() {
           transition={{ type: "spring", stiffness: 340, damping: 32 }}
           className={cn(
             "fixed left-0 right-0 z-[45]",
-            "bottom-16 lg:bottom-0 lg:left-64",
+            "bottom-[92px] lg:bottom-0 lg:left-64",
             "bg-card/98 backdrop-blur-xl border-t border-border shadow-2xl",
           )}
         >

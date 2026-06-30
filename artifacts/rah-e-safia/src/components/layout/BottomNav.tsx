@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/constants";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useAppLanguage } from "@/lib/i18n";
+import { useQuranPlayer } from "@/context/QuranPlayerContext";
+import SoundBars from "@/components/quran/SoundBars";
 
 const PRIMARY_IDS = ["home", "prayer", "quran", "hadith"];
 const primaryItems = navItems.filter((n) => PRIMARY_IDS.includes(n.id));
@@ -16,8 +18,10 @@ export default function BottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const lang = useAppLanguage();
   const isArabic = lang === "ar";
+  const { state: playerState, openFullPlayer } = useQuranPlayer();
 
   const isMoreActive = moreItems.some((n) => n.path === location);
+  const playerActive = playerState.surahNumber !== null;
 
   function handleNavClick(path: string) {
     setMoreOpen(false);
@@ -55,7 +59,7 @@ export default function BottomNav() {
               "bg-card border border-border shadow-2xl overflow-hidden",
             )}
             style={{
-              bottom: `calc(env(safe-area-inset-bottom) + 4.5rem)`,
+              bottom: `calc(env(safe-area-inset-bottom) + ${playerActive ? "5.75rem" : "4.5rem"})`,
             }}
           >
             {/* Drawer header */}
@@ -146,14 +150,53 @@ export default function BottomNav() {
 
       {/* Bottom navigation bar */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border flex flex-col"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
+        {/* ── Now Playing strip ── */}
+        <AnimatePresence>
+          {playerActive && (
+            <motion.div
+              key="now-playing-strip"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 28, opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 34 }}
+              className="overflow-hidden shrink-0 w-full"
+            >
+              <button
+                onClick={openFullPlayer}
+                className="w-full h-7 gradient-primary flex items-center px-4 gap-2.5"
+                aria-label="Open full player"
+              >
+                {/* Animated bars */}
+                <SoundBars className="text-white shrink-0" />
+
+                {/* Surah + ayah */}
+                <span className="text-white text-[11px] font-semibold truncate flex-1 text-left leading-none">
+                  {playerState.surahName}
+                </span>
+
+                <span className="text-white/70 font-arabic text-xs shrink-0 leading-none" dir="rtl">
+                  {playerState.surahArabicName}
+                </span>
+
+                {/* Ayah pill */}
+                <span className="shrink-0 text-[10px] font-mono font-bold bg-white/20 text-white px-1.5 py-0.5 rounded leading-none">
+                  {playerState.ayahNumber}/{playerState.totalAyahs}
+                </span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Nav tabs row */}
         <div className="flex items-stretch justify-around h-16">
           {/* Primary items */}
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.path;
+            const isQuran = item.id === "quran";
 
             return (
               <button
@@ -184,6 +227,13 @@ export default function BottomNav() {
                     )}
                     strokeWidth={isActive ? 2.2 : 1.6}
                   />
+                  {/* Pulsing dot on Qur'an tab when audio is playing from a different route */}
+                  {isQuran && playerActive && !isActive && (
+                    <span className="absolute -top-0.5 -right-0.5 flex w-2 h-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                      <span className="relative inline-flex rounded-full w-2 h-2 bg-primary" />
+                    </span>
+                  )}
                 </div>
                 <span
                   className={cn(
