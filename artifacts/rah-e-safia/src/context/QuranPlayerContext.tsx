@@ -17,6 +17,7 @@ import {
 export type PlaybackSpeed = 0.75 | 1 | 1.25;
 export type RepeatMode = "off" | "ayah" | "surah";
 
+// ── Main player state — changes on meaningful events (play, pause, ayah nav) ──
 export interface QuranPlayerState {
   surahNumber: number | null;
   surahName: string;
@@ -28,11 +29,16 @@ export interface QuranPlayerState {
   isLoading: boolean;
   hasError: boolean;
   errorMessage: string;
-  currentTime: number;
-  duration: number;
   speed: PlaybackSpeed;
   repeat: RepeatMode;
   fullPlayerOpen: boolean;
+}
+
+// ── Progress state — changes up to 4×/sec during playback ──────────────────
+// Kept in a SEPARATE context so only MiniPlayer/FullPlayer re-render on timeupdate.
+export interface PlayerProgressState {
+  currentTime: number;
+  duration: number;
 }
 
 export interface QuranPlayerContextValue {
@@ -57,6 +63,7 @@ export interface QuranPlayerContextValue {
 }
 
 const QuranPlayerContext = createContext<QuranPlayerContextValue | null>(null);
+const PlayerProgressContext = createContext<PlayerProgressState>({ currentTime: 0, duration: 0 });
 
 const INITIAL: QuranPlayerState = {
   surahNumber: null,
@@ -69,23 +76,21 @@ const INITIAL: QuranPlayerState = {
   isLoading: false,
   hasError: false,
   errorMessage: "",
-  currentTime: 0,
-  duration: 0,
   speed: 1,
   repeat: "off",
   fullPlayerOpen: false,
 };
 
+const INITIAL_PROGRESS: PlayerProgressState = { currentTime: 0, duration: 0 };
+
 export function QuranPlayerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<QuranPlayerState>(INITIAL);
+  const [progress, setProgress] = useState<PlayerProgressState>(INITIAL_PROGRESS);
 
-  // Singleton audio element — persists across route changes
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Always-current state ref so audio event handlers avoid stale closures
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
-  // Ref to loadAndPlay so the "ended" handler can always call the latest version
   const loadAndPlayRef = useRef<(
     surah: number, ayah: number, surahName: string, surahArabicName: string,
     totalAyahs: number, reciter: Reciter, speed: PlaybackSpeed
@@ -113,21 +118,24 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     audio.addEventListener("pause", () => {
       setState((s) => ({ ...s, isPlaying: false }));
     });
+
+    // ── Progress events: update ONLY the lightweight progress context ──────
+    // This prevents SurahPage / QuranPage / nav from re-rendering 4×/sec.
     audio.addEventListener("timeupdate", () => {
       const a = audioRef.current!;
-      setState((s) => ({
-        ...s,
-        currentTime: a.currentTime,
-        duration: isFinite(a.duration) ? a.duration : 0,
-      }));
+      setProgress((p) => {
+        const t = a.currentTime;
+        const d = isFinite(a.duration) ? a.duration : 0;
+        if (Math.abs(p.currentTime - t) < 0.1 && p.duration === d) return p;
+        return { currentTime: t, duration: d };
+      });
     });
     audio.addEventListener("durationchange", () => {
       const a = audioRef.current!;
-      setState((s) => ({
-        ...s,
-        duration: isFinite(a.duration) ? a.duration : 0,
-      }));
+      const d = isFinite(a.duration) ? a.duration : 0;
+      setProgress((p) => p.duration === d ? p : { ...p, duration: d });
     });
+
     audio.addEventListener("error", () => {
       setState((s) => ({
         ...s,
@@ -147,7 +155,8 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
       } else {
         const isLast = s.ayahNumber >= s.totalAyahs;
         if (isLast && s.repeat === "off") {
-          setState((p) => ({ ...p, isPlaying: false, currentTime: 0 }));
+          setState((p) => ({ ...p, isPlaying: false }));
+          setProgress({ currentTime: 0, duration: 0 });
           return;
         }
         const next = isLast && s.repeat === "surah" ? 1 : s.ayahNumber + 1;
@@ -180,9 +189,8 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
       isLoading: true,
       hasError: false,
       errorMessage: "",
-      currentTime: 0,
-      duration: 0,
     }));
+    setProgress({ currentTime: 0, duration: 0 });
 
     audio.src = url;
     audio.playbackRate = speed;
@@ -201,7 +209,6 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep ref up to date
   useEffect(() => { loadAndPlayRef.current = loadAndPlay; }, [loadAndPlay]);
 
   const playAyah = useCallback((
@@ -233,10 +240,9 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       surahNumber: null,
       ayahNumber: null,
-      currentTime: 0,
-      duration: 0,
       fullPlayerOpen: false,
     }));
+    setProgress({ currentTime: 0, duration: 0 });
   }, []);
 
   const nextAyah = useCallback(() => {
@@ -259,7 +265,7 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (audio && isFinite(time)) {
       audio.currentTime = time;
-      setState((s) => ({ ...s, currentTime: time }));
+      setProgress((p) => ({ ...p, currentTime: time }));
     }
   }, []);
 
@@ -294,7 +300,6 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, fullPlayerOpen: false }));
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       const audio = audioRef.current;
@@ -307,7 +312,9 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
       state, playAyah, togglePlayPause, stop, nextAyah, prevAyah,
       seek, setSpeed, setRepeat, setReciter, openFullPlayer, closeFullPlayer,
     }}>
-      {children}
+      <PlayerProgressContext.Provider value={progress}>
+        {children}
+      </PlayerProgressContext.Provider>
     </QuranPlayerContext.Provider>
   );
 }
@@ -316,4 +323,9 @@ export function useQuranPlayer(): QuranPlayerContextValue {
   const ctx = useContext(QuranPlayerContext);
   if (!ctx) throw new Error("useQuranPlayer must be inside QuranPlayerProvider");
   return ctx;
+}
+
+/** Subscribe only to currentTime/duration — does NOT re-render on player state changes. */
+export function usePlayerProgress(): PlayerProgressState {
+  return useContext(PlayerProgressContext);
 }

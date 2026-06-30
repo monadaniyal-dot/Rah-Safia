@@ -4,7 +4,7 @@ import {
   Loader2, AlertCircle, RefreshCw, Repeat, Repeat1,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuranPlayer, type PlaybackSpeed, type RepeatMode } from "@/context/QuranPlayerContext";
+import { useQuranPlayer, usePlayerProgress, type PlaybackSpeed, type RepeatMode } from "@/context/QuranPlayerContext";
 import { RECITERS, formatPlayerTime } from "@/lib/quran-audio";
 import SoundBars from "./SoundBars";
 
@@ -23,10 +23,11 @@ export default function FullPlayer() {
     setSpeed, setRepeat, setReciter, closeFullPlayer,
   } = useQuranPlayer();
 
+  const { currentTime, duration } = usePlayerProgress();
   const {
     surahName, surahArabicName, ayahNumber, totalAyahs,
     reciter, isPlaying, isLoading, hasError, errorMessage,
-    currentTime, duration, speed, repeat, fullPlayerOpen,
+    speed, repeat, fullPlayerOpen,
   } = state;
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;

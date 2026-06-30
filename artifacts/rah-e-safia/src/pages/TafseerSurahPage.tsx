@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useLocation, useSearch } from "wouter";
 import { saveTafseerProgress } from "@/lib/reading-progress";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,9 @@ import { useBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
 import { TAFSEER_SOURCE_MAP } from "@/lib/tafseer-api";
+
+// ── Module-level constant: compiled once ─────────────────────────────────────
+const BISMILLAH_PREFIX_RE = /^بِسْمِ\s+[\u0671\u0627]للَّهِ\s+[\u0671\u0627]لرَّحْمَٰنِ\s+[\u0671\u0627]لرَّحِيمِ\s*/u;
 
 /* ── Skeleton ── */
 function AyahSkeleton({ index }: { index: number }) {
@@ -34,31 +37,44 @@ function AyahSkeleton({ index }: { index: number }) {
   );
 }
 
-/* ── Ayah card ── */
-function AyahCard({
-  ayah,
-  surahName,
-  surahNumber,
-  mode,
-  index,
-  bookmarked,
-  onToggleBookmark,
-  sourceId,
-  showTafseer,
-}: {
+/* ── Ayah card — memoized; calls useBookmarks internally ── */
+interface AyahCardProps {
   ayah: AyahWithTranslations;
   surahName: string;
+  surahArabicName: string;
   surahNumber: number;
   mode: TranslationMode;
   index: number;
-  bookmarked: boolean;
-  onToggleBookmark: () => void;
   sourceId: string;
   showTafseer: boolean;
-}) {
+}
+
+const AyahCard = memo(function AyahCard({
+  ayah,
+  surahName,
+  surahArabicName,
+  surahNumber,
+  mode,
+  index,
+  sourceId,
+  showTafseer,
+}: AyahCardProps) {
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+
+  const bookmarked = isBookmarked(surahNumber, ayah.numberInSurah);
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
   const displayEnglish = showEnglish(mode);
+
+  const handleBookmark = useCallback(() => {
+    toggleBookmark({
+      surahNumber,
+      surahName,
+      surahArabicName,
+      ayahNumber: ayah.numberInSurah,
+      arabicText: ayah.arabic,
+    });
+  }, [toggleBookmark, surahNumber, surahName, surahArabicName, ayah.numberInSurah, ayah.arabic]);
 
   return (
     <motion.article
@@ -89,7 +105,7 @@ function AyahCard({
             </span>
           )}
           <button
-            onClick={onToggleBookmark}
+            onClick={handleBookmark}
             aria-label={bookmarked ? "Remove bookmark" : "Bookmark this ayah"}
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
@@ -147,7 +163,7 @@ function AyahCard({
       />
     </motion.article>
   );
-}
+});
 
 /* ── Main page ── */
 export default function TafseerSurahPage() {
@@ -156,11 +172,11 @@ export default function TafseerSurahPage() {
   const search = useSearch();
 
   // Parse source from query string e.g. ?source=maarif
-  const sourceId = (() => {
+  const sourceId = useMemo(() => {
     const params = new URLSearchParams(search);
     const s = params.get("source") ?? "maarif";
     return TAFSEER_SOURCE_MAP[s] ? s : "maarif";
-  })();
+  }, [search]);
 
   const sourceMeta = TAFSEER_SOURCE_MAP[sourceId];
 
@@ -172,20 +188,19 @@ export default function TafseerSurahPage() {
 
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
-  const { isBookmarked, toggleBookmark } = useBookmarks();
 
-  const load = (num: number) => {
+  const load = useCallback((num: number) => {
     setIsLoading(true);
     setError(null);
     fetchSurah(num)
       .then((data) => { setAyahs(data.ayahs); setIsLoading(false); })
       .catch((err: Error) => { setError(err.message ?? "Failed to load surah"); setIsLoading(false); });
-  };
+  }, []);
 
   useEffect(() => {
     setAyahs([]);
     load(surahNum);
-  }, [surahNum]);
+  }, [surahNum, load]);
 
   // Save tafseer reading progress whenever this surah's ayahs load
   useEffect(() => {
@@ -193,6 +208,16 @@ export default function TafseerSurahPage() {
       saveTafseerProgress(surahNum, surah.name, surah.arabicName, 1, sourceId, sourceMeta.name);
     }
   }, [ayahs.length, surahNum, surah, sourceId, sourceMeta]);
+
+  const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
+
+  const displayedAyahs = useMemo(() =>
+    showBismillahBanner
+      ? ayahs.map((a, idx) =>
+          idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
+        )
+      : ayahs,
+  [ayahs, showBismillahBanner]);
 
   if (!surah) {
     return (
@@ -205,20 +230,6 @@ export default function TafseerSurahPage() {
       </div>
     );
   }
-
-  // Surah 1 (Al-Fatiha): Bismillah IS verse 1 — no banner, show all ayahs.
-  // Surah 9 (At-Tawbah): no Bismillah — no banner, show all ayahs.
-  // All others: show decorative banner; the API prepends Bismillah text onto ayah 1's
-  // Arabic string (it is NOT a separate numbered ayah). Strip the prefix, never remove the ayah.
-  const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
-
-  const BISMILLAH_PREFIX_RE = /^بِسْمِ\s+[\u0671\u0627]للَّهِ\s+[\u0671\u0627]لرَّحْمَٰنِ\s+[\u0671\u0627]لرَّحِيمِ\s*/u;
-
-  const displayedAyahs = showBismillahBanner
-    ? ayahs.map((a, idx) =>
-        idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
-      )
-    : ayahs;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -429,19 +440,10 @@ export default function TafseerSurahPage() {
                   key={ayah.number}
                   ayah={ayah}
                   surahName={surah.name}
+                  surahArabicName={surah.arabicName}
                   surahNumber={surahNum}
                   mode={mode}
                   index={idx}
-                  bookmarked={isBookmarked(surahNum, ayah.numberInSurah)}
-                  onToggleBookmark={() =>
-                    toggleBookmark({
-                      surahNumber: surahNum,
-                      surahName: surah.name,
-                      surahArabicName: surah.arabicName,
-                      ayahNumber: ayah.numberInSurah,
-                      arabicText: ayah.arabic,
-                    })
-                  }
                   sourceId={sourceId}
                   showTafseer={showAllTafseer}
                 />

@@ -3,14 +3,15 @@ import {
   Play, Pause, SkipBack, SkipForward, X, Music2, Loader2, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuranPlayer } from "@/context/QuranPlayerContext";
+import { useQuranPlayer, usePlayerProgress } from "@/context/QuranPlayerContext";
 import { formatPlayerTime } from "@/lib/quran-audio";
 import SoundBars from "./SoundBars";
 
 export default function MiniPlayer() {
   const { state, togglePlayPause, nextAyah, prevAyah, stop, openFullPlayer } = useQuranPlayer();
+  const { currentTime, duration } = usePlayerProgress();
   const { surahNumber, surahName, ayahNumber, totalAyahs, reciter,
-          isPlaying, isLoading, hasError, currentTime, duration } = state;
+          isPlaying, isLoading, hasError } = state;
 
   const visible = surahNumber !== null;
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;

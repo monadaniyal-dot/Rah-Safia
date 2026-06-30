@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -35,6 +35,17 @@ function langToMode(lang: string): TranslationMode {
   }
 }
 
+// ── Module-level constant: compiled once, never recompiled on re-renders ─────
+const D = "[\\u064B-\\u0652\\u0670]*";
+const A = "[\\u0671\\u0627]";
+const BISMILLAH_PREFIX_RE = new RegExp(
+  "^\\u0628" + D + "\\u0633" + D + "\\u0645" + D + "\\s+" +
+  A + D + "\\u0644" + D + "\\u0644" + D + "\\u0647" + D + "\\s+" +
+  A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u0645" + D + "\\u0646" + D + "\\s+" +
+  A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u064A" + D + "\\u0645" + D + "\\s*",
+  "u"
+);
+
 /* ── Skeleton loader ── */
 function AyahSkeleton({ index }: { index: number }) {
   return (
@@ -55,42 +66,66 @@ function AyahSkeleton({ index }: { index: number }) {
   );
 }
 
-/* ── Ayah card ── */
-function AyahCard({
-  ayah,
-  surahName,
-  surahNumber,
-  mode,
-  index,
-  bookmarked,
-  showTransliteration,
-  isLastRead,
-  highlightLastRead,
-  isPlayingAyah,
-  isPlayerPlaying,
-  isPlayerLoading,
-  onToggleBookmark,
-  onPlay,
-}: {
+/* ── Ayah card — memoized; calls hooks internally so callbacks are stable ── */
+interface AyahCardProps {
   ayah: AyahWithTranslations;
   surahName: string;
+  surahArabicName: string;
   surahNumber: number;
+  totalAyahs: number;
   mode: TranslationMode;
   index: number;
-  bookmarked: boolean;
   showTransliteration: boolean;
   isLastRead: boolean;
   highlightLastRead: boolean;
-  isPlayingAyah: boolean;
-  isPlayerPlaying: boolean;
-  isPlayerLoading: boolean;
-  onToggleBookmark: () => void;
-  onPlay: () => void;
-}) {
+}
+
+const AyahCard = memo(function AyahCard({
+  ayah,
+  surahName,
+  surahArabicName,
+  surahNumber,
+  totalAyahs,
+  mode,
+  index,
+  showTransliteration,
+  isLastRead,
+  highlightLastRead,
+}: AyahCardProps) {
+  // Hooks inside the card — useQuranPlayer() no longer fires on timeupdate
+  // because currentTime/duration were moved to PlayerProgressContext.
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
+
+  const isPlayingAyah =
+    playerState.surahNumber === surahNumber &&
+    playerState.ayahNumber === ayah.numberInSurah;
+  const isPlayerPlaying = playerState.isPlaying;
+  const isPlayerLoading = playerState.isLoading;
+
+  const shouldHighlightLastRead = isLastRead && highlightLastRead && !isPlayingAyah;
+  const bookmarked = isBookmarked(surahNumber, ayah.numberInSurah);
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
   const displayEnglish = showEnglish(mode);
-  const shouldHighlightLastRead = isLastRead && highlightLastRead && !isPlayingAyah;
+
+  const handlePlay = useCallback(() => {
+    if (isPlayingAyah) {
+      togglePlayPause();
+    } else {
+      playAyah(surahNumber, ayah.numberInSurah, surahName, surahArabicName, totalAyahs);
+    }
+  }, [isPlayingAyah, togglePlayPause, playAyah, surahNumber, ayah.numberInSurah, surahName, surahArabicName, totalAyahs]);
+
+  const handleBookmark = useCallback(() => {
+    toggleBookmark({
+      surahNumber,
+      surahName,
+      surahArabicName,
+      ayahNumber: ayah.numberInSurah,
+      arabicText: ayah.arabic,
+    });
+  }, [toggleBookmark, surahNumber, surahName, surahArabicName, ayah.numberInSurah, ayah.arabic]);
 
   const cardBorder = isPlayingAyah
     ? "border-primary/50 bg-card ring-1 ring-primary/20"
@@ -180,7 +215,7 @@ function AyahCard({
 
           {/* Play / Pause button */}
           <motion.button
-            onClick={onPlay}
+            onClick={handlePlay}
             whileTap={{ scale: 0.88 }}
             transition={{ type: "spring", stiffness: 500, damping: 28 }}
             aria-label={isPlayingAyah && isPlayerPlaying ? "Pause" : `Play ayah ${ayah.numberInSurah}`}
@@ -201,7 +236,7 @@ function AyahCard({
           </motion.button>
 
           <button
-            onClick={onToggleBookmark}
+            onClick={handleBookmark}
             aria-label={bookmarked ? "Remove bookmark" : "Bookmark this ayah"}
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
@@ -301,7 +336,7 @@ function AyahCard({
       <TafseerPanel surahNum={surahNumber} ayahNum={ayah.numberInSurah} />
     </motion.article>
   );
-}
+});
 
 /* ── Main page ── */
 export default function SurahPage() {
@@ -315,7 +350,6 @@ export default function SurahPage() {
 
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
-  const { isBookmarked, toggleBookmark } = useBookmarks();
 
   // ── Quran player ─────────────────────────────────────────────────────────
   const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
@@ -376,7 +410,6 @@ export default function SurahPage() {
 
     const prog = getQuranProgress();
     if (!prog || prog.surahNum !== surahNum) {
-      // New surah — save it at ayah 1 as a "started" marker
       if (surah) saveQuranProgress(surahNum, surah.name, surah.arabicName, 1, { translationMode: modeRef.current });
       return;
     }
@@ -389,7 +422,6 @@ export default function SurahPage() {
     // Only auto-scroll if resumeLastRead is enabled and not on ayah 1
     if (!settings.resumeLastRead || prog.ayahNum <= 1) return;
 
-    // Give DOM a frame to render, then scroll
     requestAnimationFrame(() => {
       setTimeout(() => {
         const el = document.getElementById(`ayah-${surahNum}-${prog.ayahNum}`);
@@ -407,7 +439,6 @@ export default function SurahPage() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Pick the most-intersecting visible entry
         let best: IntersectionObserverEntry | null = null;
         for (const entry of entries) {
           if (entry.isIntersecting) {
@@ -424,10 +455,8 @@ export default function SurahPage() {
         );
         if (!ayahNum) return;
 
-        // Update highlight immediately
         setLastReadAyahNum(ayahNum);
 
-        // Debounce the localStorage write (1 s)
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
           saveQuranProgress(surahNum, surah.name, surah.arabicName, ayahNum, {
@@ -445,7 +474,6 @@ export default function SurahPage() {
       observer.disconnect();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  // Re-run when ayahs change (new surah) but NOT when mode changes — modeRef handles that
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, surahNum, surah]);
 
@@ -472,21 +500,15 @@ export default function SurahPage() {
 
   const showBismillahBanner = surahNum !== 9 && surahNum !== 1;
 
-  const D = "[\\u064B-\\u0652\\u0670]*";
-  const A = "[\\u0671\\u0627]";
-  const BISMILLAH_PREFIX_RE = new RegExp(
-    "^\\u0628" + D + "\\u0633" + D + "\\u0645" + D + "\\s+" +
-    A + D + "\\u0644" + D + "\\u0644" + D + "\\u0647" + D + "\\s+" +
-    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u0645" + D + "\\u0646" + D + "\\s+" +
-    A + D + "\\u0644" + D + "\\u0631" + D + "\\u062D" + D + "\\u064A" + D + "\\u0645" + D + "\\s*",
-    "u"
-  );
-
-  const displayedAyahs = showBismillahBanner
-    ? ayahs.map((a, idx) =>
-        idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
-      )
-    : ayahs;
+  // useMemo prevents recomputing on every render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const displayedAyahs = useMemo(() =>
+    showBismillahBanner
+      ? ayahs.map((a, idx) =>
+          idx === 0 ? { ...a, arabic: a.arabic.replace(BISMILLAH_PREFIX_RE, "") } : a
+        )
+      : ayahs,
+  [ayahs, showBismillahBanner]);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -692,32 +714,14 @@ export default function SurahPage() {
                   key={ayah.number}
                   ayah={ayah}
                   surahName={surah.name}
+                  surahArabicName={surah.arabicName}
                   surahNumber={surahNum}
+                  totalAyahs={surah.verses}
                   mode={mode}
                   index={idx}
-                  bookmarked={isBookmarked(surahNum, ayah.numberInSurah)}
                   showTransliteration={settings.showTransliteration}
                   isLastRead={ayah.numberInSurah === lastReadAyahNum}
                   highlightLastRead={settings.highlightLastReadVerse}
-                  isPlayingAyah={playingAyahNum === ayah.numberInSurah}
-                  isPlayerPlaying={playerState.isPlaying}
-                  isPlayerLoading={playerState.isLoading}
-                  onPlay={() => {
-                    if (playingAyahNum === ayah.numberInSurah) {
-                      togglePlayPause();
-                    } else {
-                      playAyah(surahNum, ayah.numberInSurah, surah.name, surah.arabicName, surah.verses);
-                    }
-                  }}
-                  onToggleBookmark={() =>
-                    toggleBookmark({
-                      surahNumber: surahNum,
-                      surahName: surah.name,
-                      surahArabicName: surah.arabicName,
-                      ayahNumber: ayah.numberInSurah,
-                      arabicText: ayah.arabic,
-                    })
-                  }
                 />
               ))}
             </div>

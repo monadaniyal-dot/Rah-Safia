@@ -1,0 +1,137 @@
+Perform a comprehensive performance optimization pass across the entire Rah-e-Safia application without changing existing functionality.
+
+## Objective
+
+Improve loading speed, responsiveness, rendering performance, and memory usage while preserving the current user experience.
+
+---
+
+## Quran Module
+
+Optimize:
+
+* Initial Surah list loading.
+* Verse rendering performance.
+* Translation rendering.
+* Tafseer loading.
+* Audio playback initialization.
+* Continue Reading performance.
+
+Only render data that is currently visible where practical.
+
+---
+
+## Hadith Module
+
+Optimize:
+
+* Collection loading.
+* Search performance.
+* Chapter loading.
+* Large dataset rendering.
+* Scrolling performance.
+
+Avoid loading unnecessary data until required.
+
+---
+
+## Tafseer
+
+Improve:
+
+* Loading speed.
+* Caching.
+* Navigation between verses.
+* Scroll performance.
+
+---
+
+## Prayer Times
+
+Optimize:
+
+* Prayer calculation.
+* Refresh logic.
+* Location lookup.
+* Reduce unnecessary recalculations.
+
+---
+
+## Home Screen
+
+Optimize:
+
+* Daily Reflection loading.
+* Daily Dua loading.
+* Prayer Countdown updates.
+* Hijri Date calculation.
+* Card rendering.
+
+---
+
+## Images & Assets
+
+Review all static assets.
+
+* Compress where appropriate.
+* Remove unused assets.
+* Lazy load non-critical images.
+
+---
+
+## React Performance
+
+Review:
+
+* Unnecessary re-renders.
+* Expensive state updates.
+* Component memoization.
+* Lazy loading opportunities.
+* Code splitting where appropriate.
+
+---
+
+## Network Requests
+
+Review every API request.
+
+* Eliminate duplicate requests.
+* Cache reusable responses.
+* Handle failed requests gracefully.
+* Avoid unnecessary refetching.
+
+---
+
+## Bundle Optimization
+
+Review:
+
+* Unused dependencies.
+* Large libraries.
+* Dead code.
+* Unused imports.
+
+Reduce bundle size where possible.
+
+---
+
+## Mobile Performance
+
+Ensure:
+
+* Smooth scrolling.
+* Smooth page transitions.
+* Stable memory usage.
+* No lag while switching sections.
+
+---
+
+## Final Verification
+
+After optimization provide:
+
+1. Files modified.
+2. Performance improvements made.
+3. Estimated performance gains.
+4. Any remaining bottlenecks.
+5. Confirmation that no functionality or UI was changed.
