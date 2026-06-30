@@ -1,0 +1,123 @@
+Implement a premium Quran Recitation Mode for Rah-e-Safia.
+
+Objective:
+Create a seamless, beautiful audio recitation experience integrated directly into the Quran reader without disrupting the existing reading interface.
+
+## Audio Playback
+
+Implement:
+
+* Play
+* Pause
+* Resume
+* Stop
+* Previous Ayah
+* Next Ayah
+* Auto-play next verse
+* Seek/Progress bar
+* Playback speed (0.75x, 1x, 1.25x)
+* Repeat:
+
+  * Current Ayah
+  * Current Surah
+  * Off
+
+---
+
+## Reciters
+
+Provide a Reciter selector.
+
+Initially include high-quality reciters such as:
+
+* Mishary Rashid Alafasy
+* Abdul Basit Abdus Samad
+* Maher Al-Muaiqly
+* Saad Al-Ghamdi
+* Abdul Rahman Al-Sudais
+
+Structure the implementation so additional reciters can be added easily.
+
+---
+
+## Reading Synchronization
+
+While audio is playing:
+
+* Automatically highlight the currently recited Ayah.
+* Smoothly scroll to keep the current Ayah visible.
+* Remove the highlight when playback stops.
+* Keep the highlight subtle and consistent with the Rah-e-Safia theme.
+
+---
+
+## Mini Player
+
+Display a compact player at the bottom of the screen showing:
+
+* Reciter name
+* Current Surah
+* Current Ayah
+* Play/Pause
+* Previous
+* Next
+* Progress indicator
+
+The player should remain available while navigating within the Quran section.
+
+---
+
+## Full Player
+
+Tapping the mini player should open a full-screen Recitation Mode with:
+
+* Large Surah name
+* Current Ayah
+* Reciter information
+* Playback controls
+* Progress bar
+* Repeat options
+* Playback speed
+* Reciter selection
+
+---
+
+## Behaviour
+
+* Continue playback while reading.
+* Resume playback after temporary interruptions where appropriate.
+* Handle network failures gracefully with user-friendly messages.
+* Do not interrupt playback unnecessarily when changing pages within the Quran.
+
+---
+
+## Performance
+
+* Stream audio efficiently.
+* Avoid downloading unnecessary files.
+* Cache recently played audio where practical to reduce repeated loading.
+
+---
+
+## Design
+
+* Match the existing premium Rah-e-Safia green theme.
+* Use elegant animations.
+* Keep controls clean and uncluttered.
+* Maintain excellent mobile responsiveness.
+
+---
+
+## Technical Requirements
+
+* Preserve all existing Quran functionality.
+* Integrate cleanly with bookmarks, continue reading, translations, and Tafseer.
+* Build reusable audio components for future expansion.
+
+After implementation provide:
+
+1. Files created or modified.
+2. Audio source/API used.
+3. Reciters supported.
+4. Caching strategy.
+5. Performance optimizations implemented.

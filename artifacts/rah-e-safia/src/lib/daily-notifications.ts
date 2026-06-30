@@ -32,7 +32,6 @@ function fireNotification(title: string, body: string, tag: string): void {
       body,
       icon: "/favicon.ico",
       tag,
-      renotify: false,
       silent: false,
     });
     n.onclick = () => {

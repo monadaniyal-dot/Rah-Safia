@@ -119,6 +119,27 @@
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(145 56% 30%) 100%);
   }
 
+  /* ── Soundbar animation (used in SoundBars component) ── */
+  @keyframes soundbar {
+    0%, 100% { transform: scaleY(0.3); }
+    50%       { transform: scaleY(1);   }
+  }
+  .soundbar-1 {
+    animation: soundbar 1s ease-in-out infinite;
+    animation-delay: 0s;
+    transform-origin: bottom;
+  }
+  .soundbar-2 {
+    animation: soundbar 1s ease-in-out infinite;
+    animation-delay: 0.22s;
+    transform-origin: bottom;
+  }
+  .soundbar-3 {
+    animation: soundbar 1s ease-in-out infinite;
+    animation-delay: 0.44s;
+    transform-origin: bottom;
+  }
+
   /* ── Tafseer prose — renders HTML from quran.com API ── */
   .tafseer-prose p {
     margin-bottom: 0.75rem;

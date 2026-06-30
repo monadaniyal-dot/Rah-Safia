@@ -10,14 +10,18 @@ import {
   Bookmark as BookmarkIcon,
   BookmarkCheck,
   BookMarked,
+  Play,
+  Pause,
 } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
 import { TRANSLATION_MODES, showUrdu, showEnglish, type TranslationMode } from "@/lib/surah-translations";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useSettings } from "@/lib/use-settings";
+import { useQuranPlayer } from "@/context/QuranPlayerContext";
 import { cn } from "@/lib/utils";
 import TafseerPanel from "@/components/ui/TafseerPanel";
+import SoundBars from "@/components/quran/SoundBars";
 import {
   saveQuranProgress,
   getQuranProgress,
@@ -62,7 +66,11 @@ function AyahCard({
   showTransliteration,
   isLastRead,
   highlightLastRead,
+  isPlayingAyah,
+  isPlayerPlaying,
+  isPlayerLoading,
   onToggleBookmark,
+  onPlay,
 }: {
   ayah: AyahWithTranslations;
   surahName: string;
@@ -73,12 +81,22 @@ function AyahCard({
   showTransliteration: boolean;
   isLastRead: boolean;
   highlightLastRead: boolean;
+  isPlayingAyah: boolean;
+  isPlayerPlaying: boolean;
+  isPlayerLoading: boolean;
   onToggleBookmark: () => void;
+  onPlay: () => void;
 }) {
   const hasSajda = isSajda(ayah);
   const displayUrdu = showUrdu(mode);
   const displayEnglish = showEnglish(mode);
-  const shouldHighlight = isLastRead && highlightLastRead;
+  const shouldHighlightLastRead = isLastRead && highlightLastRead && !isPlayingAyah;
+
+  const cardBorder = isPlayingAyah
+    ? "border-primary/50 bg-card ring-1 ring-primary/20"
+    : shouldHighlightLastRead
+    ? "border-gold/50 bg-card ring-1 ring-gold/25"
+    : "border-primary/12 bg-card";
 
   return (
     <motion.article
@@ -88,15 +106,23 @@ function AyahCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: Math.min(index * 0.035, 0.45) }}
       className={cn(
-        "rounded-2xl border shadow-sm overflow-hidden transition-colors duration-500",
-        shouldHighlight
-          ? "border-gold/50 bg-card ring-1 ring-gold/25"
-          : "border-primary/12 bg-card"
+        "rounded-2xl border shadow-sm overflow-hidden transition-all duration-500",
+        cardBorder
       )}
     >
-      {/* Last-read indicator strip */}
+      {/* Top indicator strip — playing (green) or last-read (gold) */}
       <AnimatePresence>
-        {shouldHighlight && (
+        {isPlayingAyah && (
+          <motion.div
+            key="playing-strip"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="h-0.5 w-full bg-gradient-to-r from-primary/40 via-primary to-primary/40 origin-left"
+          />
+        )}
+        {!isPlayingAyah && shouldHighlightLastRead && (
           <motion.div
             key="last-read-strip"
             initial={{ scaleX: 0, opacity: 0 }}
@@ -114,17 +140,26 @@ function AyahCard({
           <div
             className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 transition-colors duration-500",
-              shouldHighlight ? "bg-gold text-white" : "gradient-primary"
+              isPlayingAyah ? "gradient-primary" : shouldHighlightLastRead ? "bg-gold" : "gradient-primary"
             )}
           >
-            <span className="text-white text-xs font-bold">{ayah.numberInSurah}</span>
+            {isPlayingAyah && isPlayerPlaying ? (
+              <SoundBars className="text-white" />
+            ) : (
+              <span className="text-white text-xs font-bold">{ayah.numberInSurah}</span>
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground">
                 {surahName} {surahNumber}:{ayah.numberInSurah}
               </span>
-              {shouldHighlight && (
+              {isPlayingAyah && (
+                <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-primary/20 flex items-center gap-0.5">
+                  Now playing
+                </span>
+              )}
+              {!isPlayingAyah && shouldHighlightLastRead && (
                 <span className="text-[9px] font-bold text-gold/80 bg-gold-muted px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-gold/20 flex items-center gap-0.5">
                   <BookMarked className="w-2 h-2" strokeWidth={2.5} />
                   Last read
@@ -142,6 +177,29 @@ function AyahCard({
               ۩ Sajda
             </span>
           )}
+
+          {/* Play / Pause button */}
+          <motion.button
+            onClick={onPlay}
+            whileTap={{ scale: 0.88 }}
+            transition={{ type: "spring", stiffness: 500, damping: 28 }}
+            aria-label={isPlayingAyah && isPlayerPlaying ? "Pause" : `Play ayah ${ayah.numberInSurah}`}
+            className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
+              isPlayingAyah
+                ? "gradient-primary text-white shadow-sm"
+                : "bg-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
+            )}
+          >
+            {isPlayingAyah && isPlayerLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+            ) : isPlayingAyah && isPlayerPlaying ? (
+              <Pause className="w-3.5 h-3.5" strokeWidth={2.5} />
+            ) : (
+              <Play className="w-3.5 h-3.5 ml-0.5" strokeWidth={2.5} />
+            )}
+          </motion.button>
+
           <button
             onClick={onToggleBookmark}
             aria-label={bookmarked ? "Remove bookmark" : "Bookmark this ayah"}
@@ -164,10 +222,7 @@ function AyahCard({
       <div className="px-4 pb-4">
         {/* Arabic */}
         <p
-          className={cn(
-            "font-arabic text-2xl leading-[2.2] text-right py-3 transition-colors duration-500",
-            shouldHighlight ? "text-foreground" : "text-foreground"
-          )}
+          className="font-arabic text-2xl leading-[2.2] text-right py-3 transition-colors duration-500 text-foreground"
           dir="rtl"
           lang="ar"
         >
@@ -261,6 +316,11 @@ export default function SurahPage() {
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
   const { isBookmarked, toggleBookmark } = useBookmarks();
+
+  // ── Quran player ─────────────────────────────────────────────────────────
+  const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
+  const isPlayerOnThisSurah = playerState.surahNumber === surahNum;
+  const playingAyahNum = isPlayerOnThisSurah ? playerState.ayahNumber : null;
 
   // Track the last-read ayah number for highlight + to initialize on mount
   const [lastReadAyahNum, setLastReadAyahNum] = useState<number>(0);
@@ -389,6 +449,15 @@ export default function SurahPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, surahNum, surah]);
 
+  // ── Auto-scroll to currently playing ayah ────────────────────────────────
+  useEffect(() => {
+    if (!playingAyahNum || !isPlayerOnThisSurah) return;
+    const el = document.getElementById(`ayah-${surahNum}-${playingAyahNum}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [playingAyahNum, isPlayerOnThisSurah, surahNum]);
+
   if (!surah) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full gap-4 p-8 text-center">
@@ -477,10 +546,43 @@ export default function SurahPage() {
                 <p className="text-white/60 text-xs mt-1">{surah.verses} Ayahs</p>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/20 flex gap-4 text-xs text-white/60">
-              <span>Surah #{surahNum}</span>
-              <span>Page {surah.page}</span>
-              <span>{surah.type} revelation</span>
+            <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between gap-3">
+              <div className="flex gap-4 text-xs text-white/60">
+                <span>Surah #{surahNum}</span>
+                <span>Page {surah.page}</span>
+                <span>{surah.type} revelation</span>
+              </div>
+
+              {/* Play Surah button */}
+              {!isLoading && ayahs.length > 0 && (
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                  onClick={() => {
+                    if (isPlayerOnThisSurah) {
+                      togglePlayPause();
+                    } else {
+                      playAyah(surahNum, 1, surah.name, surah.arabicName, surah.verses);
+                    }
+                  }}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition-colors"
+                  aria-label={isPlayerOnThisSurah && playerState.isPlaying ? "Pause" : "Play Surah"}
+                >
+                  {isPlayerOnThisSurah && playerState.isLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+                  ) : isPlayerOnThisSurah && playerState.isPlaying ? (
+                    <>
+                      <SoundBars className="text-white" />
+                      <span>Playing</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-white" strokeWidth={0} />
+                      <span>Play Surah</span>
+                    </>
+                  )}
+                </motion.button>
+              )}
             </div>
           </div>
         </motion.div>
@@ -597,6 +699,16 @@ export default function SurahPage() {
                   showTransliteration={settings.showTransliteration}
                   isLastRead={ayah.numberInSurah === lastReadAyahNum}
                   highlightLastRead={settings.highlightLastReadVerse}
+                  isPlayingAyah={playingAyahNum === ayah.numberInSurah}
+                  isPlayerPlaying={playerState.isPlaying}
+                  isPlayerLoading={playerState.isLoading}
+                  onPlay={() => {
+                    if (playingAyahNum === ayah.numberInSurah) {
+                      togglePlayPause();
+                    } else {
+                      playAyah(surahNum, ayah.numberInSurah, surah.name, surah.arabicName, surah.verses);
+                    }
+                  }}
                   onToggleBookmark={() =>
                     toggleBookmark({
                       surahNumber: surahNum,

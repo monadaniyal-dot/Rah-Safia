@@ -3,22 +3,31 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
+import MiniPlayer from "@/components/quran/MiniPlayer";
+import FullPlayer from "@/components/quran/FullPlayer";
+import { useQuranPlayer } from "@/context/QuranPlayerContext";
 
 interface AppShellProps {
   children: ReactNode;
 }
 
-export default function AppShell({ children }: AppShellProps) {
+function AppShellInner({ children }: AppShellProps) {
   const [location] = useLocation();
+  const { state } = useQuranPlayer();
+  const playerActive = state.surahNumber !== null;
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop sidebar */}
       <Sidebar />
 
-      {/* Main content area */}
       <main className="flex-1 flex flex-col min-h-screen min-w-0">
-        <div className="flex-1 pb-20 lg:pb-0 overflow-y-auto">
+        <div
+          className={
+            playerActive
+              ? "flex-1 pb-[148px] lg:pb-[76px] overflow-y-auto"
+              : "flex-1 pb-20 lg:pb-0 overflow-y-auto"
+          }
+        >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location}
@@ -34,8 +43,13 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
       </main>
 
-      {/* Mobile bottom navigation */}
       <BottomNav />
+      <MiniPlayer />
+      <FullPlayer />
     </div>
   );
+}
+
+export default function AppShell({ children }: AppShellProps) {
+  return <AppShellInner>{children}</AppShellInner>;
 }
