@@ -44,6 +44,10 @@ import {
   supportsNotifications,
 } from "@/lib/prayer-notifications";
 import {
+  scheduleDailyNotifications,
+  formatReminderTime,
+} from "@/lib/daily-notifications";
+import {
   getSavedLocation,
   saveLocation,
   clearSavedLocation,
@@ -445,6 +449,13 @@ const PRAYER_NOTIF_TOGGLES = [
   { key: "ishaNotification" as const,    label: "Isha",    arabic: "العشاء" },
 ];
 
+const REMINDER_TIME_PRESETS = [
+  { value: "06:00", label: "6:00 AM" },
+  { value: "07:00", label: "7:00 AM" },
+  { value: "08:00", label: "8:00 AM" },
+  { value: "09:00", label: "9:00 AM" },
+];
+
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -496,6 +507,39 @@ export default function SettingsPage() {
   useEffect(() => {
     if (supportsNotifications()) setNotifPermission(Notification.permission);
   }, []);
+
+  // Reschedule daily notifications whenever relevant settings change
+  useEffect(() => {
+    scheduleDailyNotifications({
+      dailyReflectionNotification: settings.dailyReflectionNotification,
+      dailyDuaNotification: settings.dailyDuaNotification,
+      dailyInspirationReminder: settings.dailyInspirationReminder,
+      reminderTime: settings.reminderTime,
+    });
+  }, [
+    settings.dailyReflectionNotification,
+    settings.dailyDuaNotification,
+    settings.dailyInspirationReminder,
+    settings.reminderTime,
+  ]);
+
+  // Toggle a daily reminder — request permission first if needed
+  async function handleDailyToggle(
+    key: "dailyReflectionNotification" | "dailyDuaNotification" | "dailyInspirationReminder",
+    value: boolean
+  ) {
+    if (value) {
+      const perm = await requestNotificationPermission();
+      setNotifPermission(perm);
+      if (perm !== "granted") return; // Don't enable if permission denied
+    }
+    update(key, value);
+  }
+
+  // Update shared reminder time and reschedule
+  function handleReminderTimeChange(hhmm: string) {
+    update("reminderTime", hhmm);
+  }
 
   // Manual city save
   async function handleSaveCity() {
@@ -554,6 +598,11 @@ export default function SettingsPage() {
 
   const notifGranted = notifPermission === "granted";
   const notifDenied = notifPermission === "denied";
+
+  const anyDailyEnabled =
+    settings.dailyReflectionNotification ||
+    settings.dailyDuaNotification ||
+    settings.dailyInspirationReminder;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -942,44 +991,158 @@ export default function SettingsPage() {
           </SettingRow>
         </SectionCard>
 
-        {/* ── Notifications ── */}
+        {/* ── Reminders ── */}
         <SectionCard icon={Bell} title="Reminders" description="Daily reminders and alerts">
+
+          {/* Permission banner — only shown when a reminder is enabled and permission isn't granted */}
+          <AnimatePresence>
+            {anyDailyEnabled && !notifGranted && (
+              <motion.div
+                key="daily-perm-banner"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className={cn(
+                  "mx-5 mt-3 mb-1 rounded-xl px-4 py-3 flex items-start gap-3",
+                  notifDenied
+                    ? "bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+                    : "bg-primary/8 border border-primary/20"
+                )}>
+                  {notifDenied ? (
+                    <>
+                      <BellOff className="w-4 h-4 text-red-500 shrink-0 mt-0.5" strokeWidth={1.8} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                          Notifications blocked
+                        </p>
+                        <p className="text-[11px] text-red-600/80 dark:text-red-400/70 mt-0.5 leading-snug">
+                          Enable notifications in your browser settings to receive daily reminders.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-4 h-4 text-primary shrink-0 mt-0.5" strokeWidth={1.8} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground">
+                          Allow notifications
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                          Tap below to allow Rah-e-Safia to send you daily reminders.
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const perm = await requestNotificationPermission();
+                          setNotifPermission(perm);
+                        }}
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                      >
+                        Allow
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Daily Ayah */}
           <SettingRow
-            icon={Bell}
+            icon={BellRing}
             label="Daily Ayah"
-            description="Receive a new verse each morning"
-            dim
+            description="Receive a Quranic verse notification each morning"
           >
-            <Toggle value={settings.dailyReflectionNotification} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.dailyReflectionNotification}
+              onChange={(v) => handleDailyToggle("dailyReflectionNotification", v)}
+            />
           </SettingRow>
 
+          {/* Daily Dua */}
           <SettingRow
-            icon={Bell}
+            icon={BellRing}
             label="Daily Dua"
             description="Receive a daily supplication reminder"
-            dim
           >
-            <Toggle value={settings.dailyDuaNotification} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.dailyDuaNotification}
+              onChange={(v) => handleDailyToggle("dailyDuaNotification", v)}
+            />
           </SettingRow>
 
+          {/* Daily Inspiration */}
           <SettingRow
-            icon={Bell}
+            icon={BellRing}
             label="Daily Inspiration Reminder"
-            description="Get a daily Dua or Dhikr reminder"
-            dim
+            description="Get a daily Islamic reminder or Dhikr prompt"
           >
-            <Toggle value={settings.dailyInspirationReminder} onChange={() => {}} disabled />
+            <Toggle
+              value={settings.dailyInspirationReminder}
+              onChange={(v) => handleDailyToggle("dailyInspirationReminder", v)}
+            />
           </SettingRow>
 
+          {/* Reminder Time — always visible, grayed when nothing is enabled */}
           <SettingRow
             icon={Clock}
             label="Reminder Time"
-            description="What time to send daily reminders"
-            dim
+            description="Shared time for all enabled daily reminders"
+            vertical
+            dim={!anyDailyEnabled}
           >
-            <span className="text-xs font-mono text-muted-foreground bg-secondary px-2.5 py-1 rounded-lg">
-              {settings.reminderTime}
-            </span>
+            {/* Preset chips */}
+            <div className="flex flex-wrap gap-2">
+              {REMINDER_TIME_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => !(!anyDailyEnabled) && handleReminderTimeChange(p.value)}
+                  disabled={!anyDailyEnabled}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                    settings.reminderTime === p.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-secondary text-foreground hover:bg-accent",
+                    !anyDailyEnabled && "cursor-not-allowed"
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom time input */}
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-[11px] text-muted-foreground shrink-0">Custom:</span>
+              <input
+                type="time"
+                value={settings.reminderTime}
+                disabled={!anyDailyEnabled}
+                onChange={(e) => e.target.value && handleReminderTimeChange(e.target.value)}
+                className={cn(
+                  "text-xs rounded-lg px-3 py-1.5 bg-secondary border border-border text-foreground",
+                  "outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40",
+                  "transition-all duration-200",
+                  !anyDailyEnabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                )}
+              />
+              {anyDailyEnabled && (
+                <span className="text-xs font-semibold text-primary">
+                  {formatReminderTime(settings.reminderTime)}
+                </span>
+              )}
+            </div>
+
+            {/* Active reminders summary */}
+            {anyDailyEnabled && notifGranted && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1">
+                <CheckCircle2 className="w-3 h-3 text-primary shrink-0" strokeWidth={2.5} />
+                Reminders scheduled for {formatReminderTime(settings.reminderTime)} daily
+              </p>
+            )}
           </SettingRow>
         </SectionCard>
 

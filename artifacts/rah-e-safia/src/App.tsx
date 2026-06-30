@@ -1,5 +1,8 @@
+import { useEffect } from "react";
 import { Router, Route, Switch } from "wouter";
 import AppShell from "@/components/layout/AppShell";
+import { scheduleDailyNotifications } from "@/lib/daily-notifications";
+import { SETTINGS_DEFAULTS } from "@/lib/use-settings";
 import HomePage from "@/pages/HomePage";
 import PrayerTimesPage from "@/pages/PrayerTimesPage";
 import QiblaFinderPage from "@/pages/QiblaFinderPage";
@@ -14,6 +17,15 @@ import SettingsPage from "@/pages/SettingsPage";
 
 export default function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  // Schedule daily notifications once on startup using persisted settings
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("rah-e-safia:settings");
+      const s = raw ? { ...SETTINGS_DEFAULTS, ...JSON.parse(raw) } : SETTINGS_DEFAULTS;
+      scheduleDailyNotifications(s);
+    } catch {}
+  }, []);
 
   return (
     <Router base={base}>
