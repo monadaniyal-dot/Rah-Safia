@@ -1,0 +1,118 @@
+Create a premium "About Rah-e-Safia" page suitable for a production-ready Islamic application.
+
+## Objectives
+
+Build a clean, elegant, informative About page that reflects the quality and authenticity of Rah-e-Safia.
+
+---
+
+## Section 1 — App Information
+
+Display:
+
+* Rah-e-Safia Logo
+* App Name
+* Tagline:
+  "Your Daily Islamic Companion"
+* Current App Version
+* Build Number
+
+---
+
+## Section 2 — Mission
+
+Add a short mission statement explaining that Rah-e-Safia aims to provide authentic Quran, Hadith, Tafseer, Prayer Times, Qibla, Audio Recitation and daily Islamic guidance in one elegant application.
+
+---
+
+## Section 3 — Features
+
+Show the main features:
+
+• Quran
+• Audio Recitation
+• Multiple Translations
+• Three English Tafaseer
+• Hadith Collections
+• Prayer Times
+• Qibla Finder
+• Daily Reflection
+• Daily Dua
+• Hijri Calendar
+• Bookmarks
+• Continue Reading
+
+Use premium icons.
+
+---
+
+## Section 4 — Data Sources
+
+Clearly credit the sources used for:
+
+* Quran
+* Quran Translations
+* Tafseer
+* Hadith
+* Prayer Times
+* Qibla
+* Audio Recitation
+
+Provide links where appropriate.
+
+---
+
+## Section 5 — Privacy & Legal
+
+Include:
+
+* Privacy Policy
+* Terms of Use
+
+Open in browser or internal page if available.
+
+---
+
+## Section 6 — Contact
+
+Include:
+
+* Contact Developer
+* Report a Bug
+* Suggest a Feature
+
+Use mailto links or the preferred contact method.
+
+---
+
+## Section 7 — Share
+
+Include:
+
+* Share Rah-e-Safia
+* Rate the App (placeholder if not yet published)
+
+---
+
+## Design Requirements
+
+* Match the premium Rah-e-Safia green theme.
+* Use elegant cards.
+* Excellent spacing.
+* Responsive on mobile, tablet and desktop.
+* Smooth animations.
+* Maintain consistent typography.
+
+---
+
+## Technical Requirements
+
+* Do not affect any existing functionality.
+* Create reusable components where appropriate.
+* Keep code modular.
+
+After implementation provide:
+
+1. Files created or modified.
+2. Components created.
+3. Confirmation that the About page is fully responsive and production-ready.

@@ -14,6 +14,7 @@ import AsmaulHusnaPage from "@/pages/AsmaulHusnaPage";
 import TafseerPage from "@/pages/TafseerPage";
 import TafseerSurahPage from "@/pages/TafseerSurahPage";
 import SettingsPage from "@/pages/SettingsPage";
+import AboutPage from "@/pages/AboutPage";
 
 export default function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/tafseer/surah/:number" component={TafseerSurahPage} />
           <Route path="/tafseer" component={TafseerPage} />
           <Route path="/settings" component={SettingsPage} />
+          <Route path="/about" component={AboutPage} />
         </Switch>
       </AppShell>
     </Router>
