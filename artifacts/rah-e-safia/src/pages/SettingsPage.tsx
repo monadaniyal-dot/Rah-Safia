@@ -541,6 +541,30 @@ export default function SettingsPage() {
     update("reminderTime", hhmm);
   }
 
+  // Test notification — fires immediately so the user can verify permissions
+  const [testSent, setTestSent] = useState(false);
+  function handleTestNotification() {
+    if (testSent) return;
+    try {
+      const enabled = [
+        settings.dailyReflectionNotification && "Daily Ayah",
+        settings.dailyDuaNotification && "Daily Dua",
+        settings.dailyInspirationReminder && "Daily Inspiration",
+      ].filter(Boolean) as string[];
+      const body = enabled.length
+        ? `Active reminders: ${enabled.join(", ")}. Scheduled for ${formatReminderTime(settings.reminderTime)}.`
+        : "Your daily reminders are set up correctly.";
+      new Notification("✅ Rah-e-Safia — Test Notification", {
+        body,
+        icon: "/favicon.ico",
+        tag: "rah-e-safia:test",
+        silent: true,
+      });
+    } catch {}
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 3000);
+  }
+
   // Manual city save
   async function handleSaveCity() {
     const q = cityInput.trim();
@@ -1144,6 +1168,77 @@ export default function SettingsPage() {
               </p>
             )}
           </SettingRow>
+
+          {/* Test notification — only visible when permission is granted */}
+          <AnimatePresence>
+            {notifGranted && (
+              <motion.div
+                key="test-notif-row"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-5 py-3.5 flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <BellRing
+                      className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5"
+                      strokeWidth={1.8}
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium text-foreground leading-tight">
+                        Test Notification
+                      </span>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        Send a test to confirm notifications are working
+                      </p>
+                    </div>
+                  </div>
+                  <motion.button
+                    onClick={handleTestNotification}
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className={cn(
+                      "shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold",
+                      "border transition-all duration-300",
+                      testSent
+                        ? "bg-primary/10 border-primary/30 text-primary"
+                        : "bg-secondary border-border text-foreground hover:bg-accent hover:border-primary/25"
+                    )}
+                  >
+                    <AnimatePresence mode="wait" initial={false}>
+                      {testSent ? (
+                        <motion.span
+                          key="sent"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+                          Sent!
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="send"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <BellRing className="w-3.5 h-3.5" strokeWidth={2} />
+                          Send Test
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SectionCard>
 
         {/* ── Reading Preferences ── */}
