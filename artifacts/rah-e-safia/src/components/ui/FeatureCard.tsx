@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,11 @@ interface FeatureCardProps {
   badge?: ReactNode;
 }
 
-export default function FeatureCard({ card, index, onClick, badge }: FeatureCardProps) {
+// Wrapped in React.memo so cards only re-render when their own props change.
+// With stable onClick references (created once in HomePage via useMemo) and
+// stable badge nodes (memoized in HomePage), only the prayer card re-renders
+// when the countdown ticks — the other four cards are completely skipped.
+const FeatureCard = memo(function FeatureCard({ card, index, onClick, badge }: FeatureCardProps) {
   const Icon = card.icon;
 
   return (
@@ -97,4 +101,6 @@ export default function FeatureCard({ card, index, onClick, badge }: FeatureCard
       </div>
     </motion.button>
   );
-}
+});
+
+export default FeatureCard;

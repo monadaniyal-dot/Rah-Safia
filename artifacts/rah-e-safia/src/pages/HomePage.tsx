@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Sparkles, BookOpen, BookMarked, ArrowRight, Clock, Timer } from "lucide-react";
 import { useLocation } from "wouter";
@@ -18,7 +19,9 @@ function formatMinutes(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function PrayerBadge({ countdown }: { countdown: PrayerCountdown }) {
+// Memoized: only re-renders when the countdown object reference changes, which
+// only happens when name/minutesLeft/isUrgent actually change (see usePrayerCountdown).
+const PrayerBadge = memo(function PrayerBadge({ countdown }: { countdown: PrayerCountdown }) {
   return (
     <div
       className={cn(
@@ -43,10 +46,11 @@ function PrayerBadge({ countdown }: { countdown: PrayerCountdown }) {
       </span>
     </div>
   );
-}
+});
 
 // ─── Continue Reading card ────────────────────────────────────────────────────
-function ProgressCard({
+// Memoized: only re-renders when the reading progress entry or callback changes.
+const ProgressCard = memo(function ProgressCard({
   entry,
   type,
   onPress,
@@ -95,7 +99,7 @@ function ProgressCard({
       </div>
     </motion.button>
   );
-}
+});
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
@@ -103,6 +107,35 @@ export default function HomePage() {
   const progress = useReadingProgress();
   const hasProgress = !!(progress.quran || progress.tafseer);
   const prayerCountdown = usePrayerCountdown();
+
+  // Stable click handlers for ProgressCards — only recreate when the path changes.
+  const handleQuranPress = useCallback(
+    () => { if (progress.quran) navigate(progress.quran.path); },
+    [navigate, progress.quran?.path]
+  );
+  const handleTafseerPress = useCallback(
+    () => { if (progress.tafseer) navigate(progress.tafseer.path); },
+    [navigate, progress.tafseer?.path]
+  );
+
+  // Stable onClick list for feature cards — computed once since featureCards is a
+  // static array and wouter's navigate is stable across renders.
+  const cards = useMemo(
+    () => featureCards.map((card, index) => ({
+      card,
+      index,
+      onClick: () => navigate(card.path),
+    })),
+    [navigate]
+  );
+
+  // Stable badge node — only recreates when the countdown values actually change.
+  // Combined with React.memo on PrayerBadge and FeatureCard, only the prayer
+  // card re-renders when the minute ticks over.
+  const prayerBadge = useMemo(
+    () => prayerCountdown ? <PrayerBadge countdown={prayerCountdown} /> : undefined,
+    [prayerCountdown]
+  );
 
   return (
     <div className="min-h-full flex flex-col">
@@ -236,14 +269,14 @@ export default function HomePage() {
                   <ProgressCard
                     entry={progress.quran}
                     type="quran"
-                    onPress={() => navigate(progress.quran!.path)}
+                    onPress={handleQuranPress}
                   />
                 )}
                 {progress.tafseer && (
                   <ProgressCard
                     entry={progress.tafseer}
                     type="tafseer"
-                    onPress={() => navigate(progress.tafseer!.path)}
+                    onPress={handleTafseerPress}
                   />
                 )}
               </div>
@@ -267,19 +300,16 @@ export default function HomePage() {
           </div>
         </motion.div>
 
-        {/* Feature Cards Grid */}
+        {/* Feature Cards Grid — stable onClick + memoized FeatureCard = only the
+            prayer card re-renders when the countdown ticks, others are skipped. */}
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-          {featureCards.map((card, index) => (
+          {cards.map(({ card, index, onClick }) => (
             <FeatureCard
               key={card.id}
               card={card}
               index={index}
-              onClick={() => navigate(card.path)}
-              badge={
-                card.id === "prayer" && prayerCountdown ? (
-                  <PrayerBadge countdown={prayerCountdown} />
-                ) : undefined
-              }
+              onClick={onClick}
+              badge={card.id === "prayer" ? prayerBadge : undefined}
             />
           ))}
         </div>

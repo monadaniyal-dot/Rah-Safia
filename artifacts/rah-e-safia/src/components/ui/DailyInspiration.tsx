@@ -1,11 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share2, Copy, Bookmark, BookmarkCheck, Check,
   BookOpen, MessageSquare, HandHeart,
 } from "lucide-react";
-import { getDailyAyah, getDailyHadith } from "@/lib/daily-inspiration";
-import { getDailyDua } from "@/lib/daily-dua";
+import { getDailyAyah, getDailyHadith, type DailyAyah, type DailyHadith } from "@/lib/daily-inspiration";
+import { getDailyDua, type DailyDua } from "@/lib/daily-dua";
 import { useDuaBookmarks } from "@/lib/dua-bookmarks";
 
 // ─── Saved inspirations (localStorage) ───────────────────────────────────────
@@ -48,7 +48,7 @@ type ActionState = "idle" | "copied" | "shared";
 function useActions(getText: () => string) {
   const [state, setState] = useState<ActionState>("idle");
 
-  const share = async () => {
+  const share = useCallback(async () => {
     const text = getText();
     if (navigator.share) {
       try { await navigator.share({ text }); return; } catch { /* cancelled */ }
@@ -58,22 +58,26 @@ function useActions(getText: () => string) {
       setState("shared");
       setTimeout(() => setState("idle"), 2000);
     } catch { /* blocked */ }
-  };
+  // getText is a stable useCallback from the caller — safe to omit from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const copy = async () => {
+  const copy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(getText());
       setState("copied");
       setTimeout(() => setState("idle"), 2000);
     } catch { /* blocked */ }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { state, share, copy };
 }
 
 // ─── Action bar ───────────────────────────────────────────────────────────────
+// Memoized: only re-renders when actionState or saved changes (user interaction).
 
-function ActionBar({
+const ActionBar = memo(function ActionBar({
   onShare, onCopy, onSave, actionState, saved,
 }: {
   onShare: () => void;
@@ -118,11 +122,12 @@ function ActionBar({
       </button>
     </div>
   );
-}
+});
 
 // ─── Compact action bar (for the Dua card) ────────────────────────────────────
+// Memoized: only re-renders when actionState or saved changes (user interaction).
 
-function CompactActionBar({
+const CompactActionBar = memo(function CompactActionBar({
   onShare, onCopy, onSave, actionState, saved,
 }: {
   onShare: () => void;
@@ -167,22 +172,17 @@ function CompactActionBar({
       </button>
     </div>
   );
-}
+});
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
 type Tab = "ayah" | "hadith";
 
 // ─── Ayah hero ────────────────────────────────────────────────────────────────
+// Receives pre-computed data as a prop (parent calls getDailyAyah once).
+// Memoized: only re-renders when active changes (tab switch).
 
-function AyahHero({ active }: { active: boolean }) {
-  const ayah = getDailyAyah();
-  const key = `ayah-${ayah.surah}-${ayah.ayah}`;
-  const { saved, toggle: toggleSave } = useSaved(key);
-  const { state, share, copy } = useActions(() =>
-    `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ`
-  );
-
+const AyahHero = memo(function AyahHero({ active, ayah }: { active: boolean; ayah: DailyAyah }) {
   return (
     <AnimatePresence mode="wait">
       {active && (
@@ -229,18 +229,13 @@ function AyahHero({ active }: { active: boolean }) {
       )}
     </AnimatePresence>
   );
-}
+});
 
 // ─── Hadith hero ──────────────────────────────────────────────────────────────
+// Receives pre-computed data as a prop (parent calls getDailyHadith once).
+// Memoized: only re-renders when active changes (tab switch).
 
-function HadithHero({ active }: { active: boolean }) {
-  const hadith = getDailyHadith();
-  const key = `hadith-${hadith.reference}`;
-  const { saved, toggle: toggleSave } = useSaved(key);
-  const { state, share, copy } = useActions(() =>
-    `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ`
-  );
-
+const HadithHero = memo(function HadithHero({ active, hadith }: { active: boolean; hadith: DailyHadith }) {
   return (
     <AnimatePresence mode="wait">
       {active && (
@@ -284,19 +279,22 @@ function HadithHero({ active }: { active: boolean }) {
       )}
     </AnimatePresence>
   );
-}
+});
 
 // ─── Daily Dua card ───────────────────────────────────────────────────────────
+// Memoized: receives stable dua data (computed once per day in parent via useMemo).
+// Only re-renders when the user bookmarks or copies.
 
-function DuaCard() {
-  const dua = getDailyDua();
+const DuaCard = memo(function DuaCard({ dua }: { dua: DailyDua }) {
   const { isDuaBookmarked, toggleDuaBookmark } = useDuaBookmarks();
   const bookmarked = isDuaBookmarked(dua.id);
 
-  const { state, share, copy } = useActions(
-    () =>
-      `${dua.arabic}\n\n${dua.transliteration}\n\n"${dua.english}"\n\n— ${dua.source}\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+  const getText = useCallback(
+    () => `${dua.arabic}\n\n${dua.transliteration}\n\n"${dua.english}"\n\n— ${dua.source}\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    [dua]
   );
+
+  const { state, share, copy } = useActions(getText);
 
   const handleBookmark = useCallback(() => {
     toggleDuaBookmark({
@@ -390,29 +388,40 @@ function DuaCard() {
       </div>
     </motion.div>
   );
-}
+});
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DailyInspiration() {
   const [tab, setTab] = useState<Tab>("ayah");
 
-  const ayah = getDailyAyah();
-  const hadith = getDailyHadith();
+  // getDailyAyah / getDailyHadith / getDailyDua are deterministic (stable within a day).
+  // Memoizing them with [] ensures they are called exactly once per mount rather
+  // than on every render — and their results are passed as props to memoized
+  // sub-components so the heroes never re-render due to new data references.
+  const ayah   = useMemo(() => getDailyAyah(),   []);
+  const hadith = useMemo(() => getDailyHadith(), []);
+  const dua    = useMemo(() => getDailyDua(),    []);
 
-  const ayahKey = `ayah-${ayah.surah}-${ayah.ayah}`;
+  const ayahKey   = `ayah-${ayah.surah}-${ayah.ayah}`;
   const hadithKey = `hadith-${hadith.reference}`;
 
-  const { saved: ayahSaved, toggle: toggleAyahSave } = useSaved(ayahKey);
+  const { saved: ayahSaved,   toggle: toggleAyahSave   } = useSaved(ayahKey);
   const { saved: hadithSaved, toggle: toggleHadithSave } = useSaved(hadithKey);
 
-  const { state: ayahActionState, share: shareAyah, copy: copyAyah } = useActions(() =>
-    `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ`
+  // Stable text getters for the action bars — useCallback so useActions' share/copy
+  // are created once and don't force ActionBar re-renders through new references.
+  const getAyahText = useCallback(
+    () => `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    [ayah]
+  );
+  const getHadithText = useCallback(
+    () => `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    [hadith]
   );
 
-  const { state: hadithActionState, share: shareHadith, copy: copyHadith } = useActions(() =>
-    `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ`
-  );
+  const { state: ayahActionState,   share: shareAyah,   copy: copyAyah   } = useActions(getAyahText);
+  const { state: hadithActionState, share: shareHadith, copy: copyHadith } = useActions(getHadithText);
 
   return (
     <motion.section
@@ -479,11 +488,11 @@ export default function DailyInspiration() {
           ))}
         </div>
 
-        {/* Content */}
+        {/* Content — heroes receive data as props (no redundant getDailyX() calls inside) */}
         <div className="relative min-h-[400px] sm:min-h-[460px] flex flex-col justify-center">
           {tab === "ayah"
-            ? <AyahHero active={tab === "ayah"} />
-            : <HadithHero active={tab === "hadith"} />
+            ? <AyahHero active={tab === "ayah"} ayah={ayah} />
+            : <HadithHero active={tab === "hadith"} hadith={hadith} />
           }
         </div>
 
@@ -523,8 +532,8 @@ export default function DailyInspiration() {
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
-      {/* ── Daily Dua card ── */}
-      <DuaCard />
+      {/* ── Daily Dua card — receives stable dua object (memoized above) ── */}
+      <DuaCard dua={dua} />
     </motion.section>
   );
 }

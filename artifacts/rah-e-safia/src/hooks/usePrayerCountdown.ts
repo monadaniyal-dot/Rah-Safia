@@ -61,14 +61,30 @@ export function usePrayerCountdown(): PrayerCountdown | null {
     );
   }, []);
 
-  // Compute countdown immediately and refresh every 60 s
+  // Compute countdown immediately and refresh every 60 s.
+  // Uses functional setState to preserve the previous object reference when
+  // the computed values are identical — this prevents a re-render of HomePage
+  // on every interval tick even when nothing has visually changed.
   useEffect(() => {
     const lat = coords?.lat ?? DEFAULT_LAT;
     const lon = coords?.lon ?? DEFAULT_LON;
 
-    const compute = () => setCountdown(nextPrayer(lat, lon, new Date()));
-    compute();
+    const compute = () => {
+      const next = nextPrayer(lat, lon, new Date());
+      setCountdown((prev) => {
+        // Preserve reference when all values are the same
+        if (prev === null && next === null) return prev;
+        if (prev === null || next === null) return next;
+        if (
+          prev.name === next.name &&
+          prev.minutesLeft === next.minutesLeft &&
+          prev.isUrgent === next.isUrgent
+        ) return prev;
+        return next;
+      });
+    };
 
+    compute();
     const id = setInterval(compute, 60_000);
     return () => clearInterval(id);
   }, [coords]);
