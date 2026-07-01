@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme as useNextTheme } from "next-themes";
 import {
@@ -327,11 +328,13 @@ function AboutRow({
   label,
   value,
   href,
+  onClick,
 }: {
   icon: React.ElementType;
   label: string;
   value?: string;
   href?: string;
+  onClick?: () => void;
 }) {
   const inner = (
     <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/60 transition-colors duration-150 cursor-pointer">
@@ -347,6 +350,13 @@ function AboutRow({
     </div>
   );
 
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="block w-full text-left">
+        {inner}
+      </button>
+    );
+  }
   if (href) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className="block">
@@ -459,6 +469,7 @@ const REMINDER_TIME_PRESETS = [
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const [, navigate] = useLocation();
   const { settings, update, reset } = useSettings();
   const [resetConfirm, setResetConfirm] = useState(false);
   const [clearDone, setClearDone] = useState<Record<string, boolean>>({});
@@ -1405,8 +1416,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="border-t border-border/50 divide-y divide-border/50">
-            <AboutRow icon={Shield} label="Privacy Policy" href="#" />
-            <AboutRow icon={Info} label="Terms & Conditions" href="#" />
+            <AboutRow icon={Shield} label="Privacy Policy" onClick={() => navigate("/privacy")} />
+            <AboutRow icon={Info} label="Terms & Conditions" onClick={() => navigate("/terms")} />
             <AboutRow icon={Mail} label="Contact Us" href="mailto:contact@rah-e-safia.app" />
             <AboutRow icon={Star} label="Rate the App" href="#" />
             <div

@@ -16,6 +16,8 @@ const TafseerPage       = lazy(() => import("@/pages/TafseerPage"));
 const TafseerSurahPage  = lazy(() => import("@/pages/TafseerSurahPage"));
 const SettingsPage      = lazy(() => import("@/pages/SettingsPage"));
 const AboutPage         = lazy(() => import("@/pages/AboutPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
+const TermsOfUsePage    = lazy(() => import("@/pages/TermsOfUsePage"));
 
 function PageLoader() {
   return (
@@ -53,6 +55,8 @@ export default function App() {
             <Route path="/tafseer"           component={TafseerPage} />
             <Route path="/settings"          component={SettingsPage} />
             <Route path="/about"             component={AboutPage} />
+            <Route path="/privacy"           component={PrivacyPolicyPage} />
+            <Route path="/terms"             component={TermsOfUsePage} />
           </Switch>
         </Suspense>
       </AppShell>
