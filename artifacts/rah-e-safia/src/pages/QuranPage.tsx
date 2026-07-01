@@ -242,8 +242,35 @@ export default function QuranPage() {
         {/* Surah list */}
         <div className="flex-1 px-4 lg:px-8 py-3">
 
-          {/* ── Continue Reading banner ── */}
+          {/* ── Continue Reading banner / start nudge ── */}
           <AnimatePresence>
+            {!saved && !query && (
+              <motion.div
+                key="start-nudge"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.3 }}
+                className="mb-4"
+              >
+                <div className="w-full rounded-2xl border border-border bg-secondary/40 overflow-hidden">
+                  <div className="px-4 py-3.5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/8 border border-primary/12 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-4.5 h-4.5 text-primary/50" strokeWidth={1.6} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground leading-tight">
+                        Start your reading journey
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Open any Surah and your progress is saved automatically
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" strokeWidth={1.5} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
             {saved && !query && (
               <motion.div
                 key="resume-banner"
@@ -346,16 +373,39 @@ export default function QuranPage() {
           </AnimatePresence>
 
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="font-arabic text-3xl text-muted-foreground/40 mb-3" dir="rtl">؟</p>
-              <p className="text-sm text-muted-foreground">No surahs match your search</p>
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center py-20 text-center gap-4"
+            >
+              {/* Icon */}
+              <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center">
+                <Search className="w-7 h-7 text-muted-foreground/40" strokeWidth={1.5} />
+              </div>
+
+              {/* Message */}
+              <div className="space-y-1.5">
+                <p className="font-medium text-foreground text-sm">
+                  No surahs found
+                  {query.trim() && (
+                    <> for "<span className="text-primary">{query.trim()}</span>"</>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
+                  Try the surah name, number, or topic in English or Arabic
+                </p>
+              </div>
+
+              {/* Action */}
               <button
                 onClick={() => setQuery("")}
-                className="mt-3 text-xs text-primary underline-offset-2 hover:underline"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 hover:bg-primary/14 text-primary text-xs font-semibold transition-colors duration-200 border border-primary/15"
               >
+                <X className="w-3.5 h-3.5" strokeWidth={2.5} />
                 Clear search
               </button>
-            </div>
+            </motion.div>
           ) : (
             <div className="divide-y divide-border">
               {filtered.map((surah) => {

@@ -470,22 +470,41 @@ export default function HadithPage() {
             </div>
           )}
 
-          {/* Empty state — AnimatePresence only for this transition, not the whole list */}
+          {/* Empty state */}
           <AnimatePresence>
             {!loading && !error && filtered.length === 0 && allHadiths.length > 0 && (
               <motion.div
                 key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20 text-center"
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center py-20 text-center gap-4"
               >
-                <p className="font-arabic text-4xl text-muted-foreground/30 mb-3" dir="rtl">؟</p>
-                <p className="text-sm text-muted-foreground">No hadiths match your search</p>
+                {/* Icon */}
+                <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center">
+                  <Search className="w-7 h-7 text-muted-foreground/40" strokeWidth={1.5} />
+                </div>
+
+                {/* Message */}
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground text-sm">
+                    No hadiths found
+                    {query.trim() && (
+                      <> for "<span className="text-primary">{query.trim()}</span>"</>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed">
+                    Try a different keyword or browse by category
+                  </p>
+                </div>
+
+                {/* Action */}
                 <button
                   onClick={() => { setQuery(""); setActiveCategory("All"); }}
-                  className="mt-3 text-xs text-primary underline-offset-2 hover:underline"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 hover:bg-primary/14 text-primary text-xs font-semibold transition-colors duration-200 border border-primary/15"
                 >
+                  <X className="w-3.5 h-3.5" strokeWidth={2.5} />
                   Clear filters
                 </button>
               </motion.div>

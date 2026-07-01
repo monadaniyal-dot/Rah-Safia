@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share2, Copy, Bookmark, BookmarkCheck, Check,
-  BookOpen, MessageSquare, HandHeart,
+  BookOpen, MessageSquare, HandHeart, WifiOff, RefreshCw,
 } from "lucide-react";
 import { getDailyAyah, getDailyHadith, type DailyAyah, type DailyHadith } from "@/lib/daily-inspiration";
 import { getDailyDua, type DailyDua } from "@/lib/daily-dua";
@@ -390,18 +390,76 @@ const DuaCard = memo(function DuaCard({ dua }: { dua: DailyDua }) {
   );
 });
 
+// ─── Content unavailable fallback ─────────────────────────────────────────────
+// Shown when daily content data fails to load (e.g. storage error, bad state).
+
+function DailyContentUnavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="mb-8"
+    >
+      {/* Section label */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Daily Inspiration</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">A new Ayah, Hadith, and Dua every day</p>
+        </div>
+        <div className="font-arabic text-muted-foreground text-sm" dir="rtl">وَحْيٌ يَوْمِيٌّ</div>
+      </div>
+
+      {/* Error card — matches the hero card's rounded/shadow style */}
+      <div
+        className="relative w-full overflow-hidden rounded-3xl shadow-xl flex flex-col items-center justify-center gap-5 py-16 text-center px-8"
+        style={{ background: "linear-gradient(160deg, #1c4a31 0%, #0e2d1f 40%, #081a12 100%)" }}
+      >
+        <div className="absolute inset-0 islamic-pattern opacity-20 pointer-events-none" aria-hidden="true" />
+
+        <div className="relative w-14 h-14 rounded-2xl bg-white/8 border border-white/15 flex items-center justify-center">
+          <WifiOff className="w-6 h-6 text-white/40" strokeWidth={1.5} />
+        </div>
+
+        <div className="relative space-y-2">
+          <p className="font-arabic text-amber-300/60 text-base" dir="rtl">لا يتوفر المحتوى</p>
+          <p className="text-white/80 font-semibold text-sm">Daily content unavailable</p>
+          <p className="text-white/45 text-xs max-w-[240px] leading-relaxed">
+            Today's inspiration could not be loaded. Please try again in a moment.
+          </p>
+        </div>
+
+        <button
+          onClick={onRetry}
+          className="relative flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 transition-colors text-white/80 text-xs font-semibold"
+        >
+          <RefreshCw className="w-3.5 h-3.5" strokeWidth={2} />
+          Try again
+        </button>
+      </div>
+    </motion.section>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DailyInspiration() {
   const [tab, setTab] = useState<Tab>("ayah");
+  const [retryKey, setRetryKey] = useState(0);
 
   // getDailyAyah / getDailyHadith / getDailyDua are deterministic (stable within a day).
-  // Memoizing them with [] ensures they are called exactly once per mount rather
-  // than on every render — and their results are passed as props to memoized
-  // sub-components so the heroes never re-render due to new data references.
-  const ayah   = useMemo(() => getDailyAyah(),   []);
-  const hadith = useMemo(() => getDailyHadith(), []);
-  const dua    = useMemo(() => getDailyDua(),    []);
+  // Wrapped in try-catch so any storage/data error shows the fallback instead of crashing.
+  // Memoizing with [retryKey] re-evaluates only when the user taps "Try again".
+  const ayah   = useMemo(() => { try { return getDailyAyah();   } catch { return null; } }, [retryKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const hadith = useMemo(() => { try { return getDailyHadith(); } catch { return null; } }, [retryKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const dua    = useMemo(() => { try { return getDailyDua();    } catch { return null; } }, [retryKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRetry = useCallback(() => setRetryKey((k) => k + 1), []);
+
+  // Show the unavailable state if any piece of content failed to load
+  if (!ayah || !hadith || !dua) {
+    return <DailyContentUnavailable onRetry={handleRetry} />;
+  }
 
   const ayahKey   = `ayah-${ayah.surah}-${ayah.ayah}`;
   const hadithKey = `hadith-${hadith.reference}`;

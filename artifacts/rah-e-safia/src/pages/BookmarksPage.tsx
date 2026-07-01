@@ -344,25 +344,48 @@ export default function BookmarksPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="flex flex-col items-center justify-center gap-5 py-24 text-center"
+            transition={{ duration: 0.38 }}
+            className="flex flex-col items-center justify-center gap-6 py-20 text-center"
           >
-            <div className="w-20 h-20 rounded-3xl bg-primary/8 border border-primary/12 flex items-center justify-center">
-              <Bookmark className="w-9 h-9 text-primary/40" strokeWidth={1.4} />
+            {/* Icon cluster */}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-3xl bg-primary/8 border border-primary/12 flex items-center justify-center shadow-sm">
+                <Bookmark className="w-10 h-10 text-primary/35" strokeWidth={1.3} />
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-amber-400/12 border border-amber-400/20 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-amber-500/50" strokeWidth={1.6} />
+              </div>
+              <div className="absolute -bottom-2 -left-2 w-7 h-7 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center">
+                <HandHeart className="w-3.5 h-3.5 text-primary/40" strokeWidth={1.6} />
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1.5">No bookmarks yet</p>
-              <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-                Tap the bookmark icon on any ayah while reading, or bookmark the Daily Dua from the home screen.
+
+            {/* Text */}
+            <div className="space-y-2">
+              <p className="font-arabic text-xl text-primary/50" dir="rtl">لا محفوظات بعد</p>
+              <p className="font-semibold text-foreground text-base">Nothing saved yet</p>
+              <p className="text-sm text-muted-foreground max-w-[280px] leading-relaxed">
+                Bookmark ayahs while reading the Qur'an, or save the Daily Dua from the home screen.
               </p>
             </div>
-            <button
-              onClick={() => navigate("/quran")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
-            >
-              <BookOpen className="w-4 h-4" strokeWidth={2} />
-              Open Qur'an
-            </button>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <button
+                onClick={() => navigate("/quran")}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
+              >
+                <BookOpen className="w-4 h-4" strokeWidth={2} />
+                Start Reading
+              </button>
+              <button
+                onClick={() => navigate("/hadith")}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary border border-border text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+              >
+                <HandHeart className="w-4 h-4 text-muted-foreground" strokeWidth={1.8} />
+                Browse Hadith
+              </button>
+            </div>
           </motion.div>
         )}
 
