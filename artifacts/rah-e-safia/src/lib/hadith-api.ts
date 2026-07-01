@@ -185,58 +185,69 @@ function parseNarrator(text: string): { narrator: string; body: string } {
   return { narrator: "", body: text };
 }
 
-// ─── In-memory cache ─────────────────────────────────────────────────────
+// ─── In-memory cache + in-flight deduplication ───────────────────────────
+// The inflight map prevents duplicate parallel network requests for the same
+// collection (e.g. StrictMode double-invoke or rapid tab switching).
 const cache = new Map<CollectionId, HadithEntry[]>();
+const inflight = new Map<CollectionId, Promise<HadithEntry[]>>();
 
 const CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions";
 
 export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> {
   if (cache.has(id)) return cache.get(id)!;
+  if (inflight.has(id)) return inflight.get(id)!;
 
   const meta = COLLECTIONS.find((c) => c.id === id)!;
 
-  const [engRes, araRes] = await Promise.all([
-    fetch(`${CDN}/${meta.editionEng}.min.json`),
-    fetch(`${CDN}/${meta.editionAra}.min.json`),
-  ]);
+  const promise = (async () => {
+    const [engRes, araRes] = await Promise.all([
+      fetch(`${CDN}/${meta.editionEng}.min.json`),
+      fetch(`${CDN}/${meta.editionAra}.min.json`),
+    ]);
 
-  if (!engRes.ok) {
-    throw new Error(`Could not load ${meta.label} (HTTP ${engRes.status})`);
-  }
-
-  const [engData, araData] = await Promise.all([
-    engRes.json() as Promise<{ hadiths: Record<string, unknown>[] }>,
-    araRes.ok
-      ? (araRes.json() as Promise<{ hadiths: Record<string, unknown>[] }>)
-      : Promise.resolve({ hadiths: [] }),
-  ]);
-
-  const araMap = new Map<number, string>();
-  for (const h of araData.hadiths ?? []) {
-    if (h.text && typeof h.hadithnumber === "number") {
-      araMap.set(h.hadithnumber as number, h.text as string);
+    if (!engRes.ok) {
+      throw new Error(`Could not load ${meta.label} (HTTP ${engRes.status})`);
     }
-  }
 
-  const entries: HadithEntry[] = (engData.hadiths ?? [])
-    .filter((h) => {
-      const t = (h.text as string) ?? "";
-      return t.trim().length > 0;
-    })
-    .map((h) => {
-      const rawText = (h.text as string) ?? "";
-      const { narrator, body } = parseNarrator(rawText);
-      return {
-        hadithnumber: h.hadithnumber as number,
-        arabicnumber: h.arabicnumber as number | undefined,
-        text: body || rawText,
-        arabicText: araMap.get(h.hadithnumber as number) ?? "",
-        narrator,
-        grades: (h.grades as HadithGrade[]) ?? [],
-        reference: (h.reference as { book?: number; hadith?: number }) ?? {},
-      };
-    });
+    const [engData, araData] = await Promise.all([
+      engRes.json() as Promise<{ hadiths: Record<string, unknown>[] }>,
+      araRes.ok
+        ? (araRes.json() as Promise<{ hadiths: Record<string, unknown>[] }>)
+        : Promise.resolve({ hadiths: [] }),
+    ]);
 
-  cache.set(id, entries);
-  return entries;
+    const araMap = new Map<number, string>();
+    for (const h of araData.hadiths ?? []) {
+      if (h.text && typeof h.hadithnumber === "number") {
+        araMap.set(h.hadithnumber as number, h.text as string);
+      }
+    }
+
+    const entries: HadithEntry[] = (engData.hadiths ?? [])
+      .filter((h) => {
+        const t = (h.text as string) ?? "";
+        return t.trim().length > 0;
+      })
+      .map((h) => {
+        const rawText = (h.text as string) ?? "";
+        const { narrator, body } = parseNarrator(rawText);
+        return {
+          hadithnumber: h.hadithnumber as number,
+          arabicnumber: h.arabicnumber as number | undefined,
+          text: body || rawText,
+          arabicText: araMap.get(h.hadithnumber as number) ?? "",
+          narrator,
+          grades: (h.grades as HadithGrade[]) ?? [],
+          reference: (h.reference as { book?: number; hadith?: number }) ?? {},
+        };
+      });
+
+    cache.set(id, entries);
+    return entries;
+  })().finally(() => {
+    inflight.delete(id);
+  });
+
+  inflight.set(id, promise);
+  return promise;
 }

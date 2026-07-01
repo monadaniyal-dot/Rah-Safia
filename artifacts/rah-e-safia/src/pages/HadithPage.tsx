@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useDeferredValue } from "react";
+import { useState, useMemo, useEffect, useCallback, useDeferredValue, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookMarked,
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
 
-// ─── Grade badge ─────────────────────────────────────────────────────────────
+// ─── Grade badge — memoised: grade data is stable once loaded ────────────────
 const GRADE_STYLES: Record<string, string> = {
   sahih:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
   hasan:   "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
@@ -35,7 +35,7 @@ const GRADE_STYLES: Record<string, string> = {
   unknown: "bg-secondary text-muted-foreground",
 };
 
-function GradeBadge({ grades }: { grades: HadithEntry["grades"] }) {
+const GradeBadge = memo(function GradeBadge({ grades }: { grades: HadithEntry["grades"] }) {
   const g = bestGrade(grades);
   if (!g) return null;
   const level = classifyGrade(g.grade);
@@ -45,10 +45,13 @@ function GradeBadge({ grades }: { grades: HadithEntry["grades"] }) {
       {g.grade}
     </span>
   );
-}
+});
 
-// ─── Hadith card ─────────────────────────────────────────────────────────────
-function HadithCard({
+// ─── Hadith card — memoised so it only re-renders when its own data changes ──
+// The hadith object reference is stable (same cached array entry), and
+// collectionLabel + idx are primitives, so React.memo skips re-renders during
+// parent state updates (search typing, load-more, category switches).
+const HadithCard = memo(function HadithCard({
   hadith,
   collectionLabel,
   idx,
@@ -63,7 +66,6 @@ function HadithCard({
     <motion.article
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18, delay: Math.min(idx * 0.025, 0.12) }}
       className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden"
     >
@@ -145,7 +147,7 @@ function HadithCard({
       </div>
     </motion.article>
   );
-}
+});
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HadithPage() {
@@ -184,7 +186,10 @@ export default function HadithPage() {
     load(activeCollection);
   }, [activeCollection, load]);
 
-  const collectionMeta = COLLECTIONS.find((c) => c.id === activeCollection)!;
+  const collectionMeta = useMemo(
+    () => COLLECTIONS.find((c) => c.id === activeCollection)!,
+    [activeCollection]
+  );
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -205,15 +210,22 @@ export default function HadithPage() {
     });
   }, [allHadiths, deferredQuery, deferredCategory]);
 
-  const displayed = filtered.slice(0, displayCount);
+  // Memoised slice — avoids creating a new array reference on every render
+  // when displayCount and filtered haven't changed.
+  const displayed = useMemo(
+    () => filtered.slice(0, displayCount),
+    [filtered, displayCount]
+  );
+
   const hasMore = displayCount < filtered.length;
 
-  function switchCollection(id: CollectionId) {
+  // Stable callback — collection pills don't cause unnecessary work on re-render
+  const switchCollection = useCallback((id: CollectionId) => {
     if (id === activeCollection) return;
     setActiveCollection(id);
     setQuery("");
     setActiveCategory("All");
-  }
+  }, [activeCollection]);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -458,8 +470,8 @@ export default function HadithPage() {
             </div>
           )}
 
-          {/* Hadith cards */}
-          <AnimatePresence mode="popLayout">
+          {/* Empty state — AnimatePresence only for this transition, not the whole list */}
+          <AnimatePresence>
             {!loading && !error && filtered.length === 0 && allHadiths.length > 0 && (
               <motion.div
                 key="empty"
@@ -478,20 +490,24 @@ export default function HadithPage() {
                 </button>
               </motion.div>
             )}
-
-            {!loading && !error && (
-              <div className="space-y-4">
-                {displayed.map((hadith, idx) => (
-                  <HadithCard
-                    key={`${activeCollection}-${hadith.hadithnumber}`}
-                    hadith={hadith}
-                    collectionLabel={collectionMeta.shortLabel}
-                    idx={idx}
-                  />
-                ))}
-              </div>
-            )}
           </AnimatePresence>
+
+          {/* Hadith card list — plain div, no AnimatePresence wrapper.
+              Individual cards handle their own entry animation.
+              Removing the popLayout wrapper eliminates expensive DOM position
+              measurement on every filter/load-more operation. */}
+          {!loading && !error && displayed.length > 0 && (
+            <div className="space-y-4">
+              {displayed.map((hadith, idx) => (
+                <HadithCard
+                  key={`${activeCollection}-${hadith.hadithnumber}`}
+                  hadith={hadith}
+                  collectionLabel={collectionMeta.shortLabel}
+                  idx={idx}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Load more */}
           {!loading && !error && hasMore && (
