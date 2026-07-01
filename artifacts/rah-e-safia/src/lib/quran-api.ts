@@ -27,6 +27,7 @@ export interface FetchSurahOptions {
 }
 
 const cache = new Map<string, SurahData>();
+const inflight = new Map<string, Promise<SurahData>>();
 
 function cacheKey(number: number, edition: string, transliteration: boolean): string {
   return `${number}:${edition}:${transliteration ? "t" : "f"}`;
@@ -71,27 +72,45 @@ export async function fetchSurah(
 
   if (cache.has(key)) return cache.get(key)!;
 
+  if (inflight.has(key)) return inflight.get(key)!;
+
   const editions = withTranslit
     ? `quran-uthmani,${edition},ur.jalandhry,en.transliteration`
     : `quran-uthmani,${edition},ur.jalandhry`;
 
-  const res = await fetch(`${BASE_URL}/surah/${number}/editions/${editions}`);
+  const promise = fetch(`${BASE_URL}/surah/${number}/editions/${editions}`)
+    .then(async (res) => {
+      if (!res.ok) {
+        throw new Error(`Network error ${res.status}: ${res.statusText}`);
+      }
+      const json = await res.json();
+      if (json.code !== 200) {
+        throw new Error(json.status ?? `Unexpected API response for surah ${number}`);
+      }
+      const surah = parseEditions(json.data as unknown[], withTranslit);
+      cache.set(key, surah);
+      return surah;
+    })
+    .finally(() => {
+      inflight.delete(key);
+    });
 
-  if (!res.ok) {
-    throw new Error(`Network error ${res.status}: ${res.statusText}`);
-  }
-
-  const json = await res.json();
-
-  if (json.code !== 200) {
-    throw new Error(json.status ?? `Unexpected API response for surah ${number}`);
-  }
-
-  const surah = parseEditions(json.data as unknown[], withTranslit);
-  cache.set(key, surah);
-  return surah;
+  inflight.set(key, promise);
+  return promise;
 }
 
 export function isSajda(ayah: AyahWithTranslations): boolean {
   return typeof ayah.sajda === "object" && ayah.sajda !== null;
+}
+
+export function prefetchSurah(
+  number: number,
+  options: FetchSurahOptions = {}
+): void {
+  const edition = options.edition ?? "en.sahih";
+  const withTranslit = options.transliteration ?? false;
+  const key = cacheKey(number, edition, withTranslit);
+  if (!cache.has(key) && !inflight.has(key)) {
+    fetchSurah(number, options).catch(() => {});
+  }
 }

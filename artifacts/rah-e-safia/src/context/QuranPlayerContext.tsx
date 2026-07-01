@@ -83,6 +83,21 @@ const INITIAL: QuranPlayerState = {
 
 const INITIAL_PROGRESS: PlayerProgressState = { currentTime: 0, duration: 0 };
 
+function prefetchNextAyahAudio(folder: string, surah: number, ayah: number, totalAyahs: number): void {
+  if (ayah >= totalAyahs) return;
+  const url = buildAudioUrl(folder, surah, ayah + 1);
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "audio";
+  link.href = url;
+  link.id = `audio-prefetch-${surah}-${ayah + 1}`;
+  const old = document.getElementById(`audio-prefetch-${surah}-${ayah}`);
+  if (old) old.remove();
+  if (!document.getElementById(link.id)) {
+    document.head.appendChild(link);
+  }
+}
+
 export function QuranPlayerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<QuranPlayerState>(INITIAL);
   const [progress, setProgress] = useState<PlayerProgressState>(INITIAL_PROGRESS);
@@ -96,6 +111,9 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     totalAyahs: number, reciter: Reciter, speed: PlaybackSpeed
   ) => void>(() => {});
 
+  // ── Eagerly initialise the Audio element on mount ────────────────────────
+  // This avoids cold-start latency on first user play (element creation +
+  // event-listener attachment happens before the user ever taps Play).
   function getAudio(): HTMLAudioElement {
     if (audioRef.current) return audioRef.current;
 
@@ -114,6 +132,11 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     });
     audio.addEventListener("playing", () => {
       setState((s) => ({ ...s, isPlaying: true, isLoading: false }));
+      // Prefetch next ayah once current one starts playing
+      const s = stateRef.current;
+      if (s.surahNumber !== null && s.ayahNumber !== null) {
+        prefetchNextAyahAudio(s.reciter.folder, s.surahNumber, s.ayahNumber, s.totalAyahs);
+      }
     });
     audio.addEventListener("pause", () => {
       setState((s) => ({ ...s, isPlaying: false }));
@@ -170,6 +193,16 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     return audio;
   }
 
+  // Warm up the audio element on mount — eliminates first-play cold start
+  useEffect(() => {
+    getAudio();
+    return () => {
+      const audio = audioRef.current;
+      if (audio) { audio.pause(); audio.src = ""; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadAndPlay = useCallback((
     surah: number, ayah: number, surahName: string, surahArabicName: string,
     totalAyahs: number, reciter: Reciter, speed: PlaybackSpeed
@@ -192,9 +225,11 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
     }));
     setProgress({ currentTime: 0, duration: 0 });
 
+    // Setting src and calling play() is sufficient — the browser fetches and
+    // decodes automatically. Calling audio.load() before play() only adds an
+    // extra round-trip and delays the canplay event.
     audio.src = url;
     audio.playbackRate = speed;
-    audio.load();
     audio.play().catch((err) => {
       if (err?.name !== "AbortError") {
         setState((s) => ({
@@ -298,13 +333,6 @@ export function QuranPlayerProvider({ children }: { children: ReactNode }) {
 
   const closeFullPlayer = useCallback(() => {
     setState((s) => ({ ...s, fullPlayerOpen: false }));
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const audio = audioRef.current;
-      if (audio) { audio.pause(); audio.src = ""; }
-    };
   }, []);
 
   return (

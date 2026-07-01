@@ -265,73 +265,46 @@ const AyahCard = memo(function AyahCard({
           {ayah.arabic}
         </p>
 
-        {/* Transliteration */}
-        <AnimatePresence>
-          {showTransliteration && ayah.transliteration && (
-            <motion.div
-              key="transliteration"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="border-t border-border/40 pt-2 pb-1">
-                <p className="text-[10px] font-semibold text-gold/70 uppercase tracking-wide mb-1">
-                  Transliteration
-                </p>
-                <p className="text-muted-foreground leading-relaxed italic" style={{ fontSize: "var(--translation-reading-size)" }}>
-                  {ayah.transliteration}
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Transliteration — CSS fade-in; no Framer Motion instance per card */}
+        {showTransliteration && ayah.transliteration && (
+          <div className="animate-in fade-in duration-200 border-t border-border/40 pt-2 pb-1">
+            <p className="text-[10px] font-semibold text-gold/70 uppercase tracking-wide mb-1">
+              Transliteration
+            </p>
+            <p className="text-muted-foreground leading-relaxed italic" style={{ fontSize: "var(--translation-reading-size)" }}>
+              {ayah.transliteration}
+            </p>
+          </div>
+        )}
 
-        {/* Translations */}
-        <AnimatePresence>
-          {displayEnglish && ayah.english && (
-            <motion.div
-              key="english"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="border-t border-border/60 pt-3 pb-1">
-                <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
-                  English — Sahih International
-                </p>
-                <p className="text-foreground/80 leading-relaxed" style={{ fontSize: "var(--translation-reading-size)" }}>
-                  {ayah.english}
-                </p>
-              </div>
-            </motion.div>
-          )}
+        {/* English translation — CSS fade-in; no Framer Motion instance per card */}
+        {displayEnglish && ayah.english && (
+          <div className="animate-in fade-in duration-200 border-t border-border/60 pt-3 pb-1">
+            <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
+              English — Sahih International
+            </p>
+            <p className="text-foreground/80 leading-relaxed" style={{ fontSize: "var(--translation-reading-size)" }}>
+              {ayah.english}
+            </p>
+          </div>
+        )}
 
-          {displayUrdu && ayah.urdu && (
-            <motion.div
-              key="urdu"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+        {/* Urdu translation — CSS fade-in; no Framer Motion instance per card */}
+        {displayUrdu && ayah.urdu && (
+          <div className="animate-in fade-in duration-200 border-t border-border/60 pt-3 pb-1">
+            <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
+              اردو — جالندھری
+            </p>
+            <p
+              className="font-arabic text-foreground/85 leading-[2] text-right"
+              style={{ fontSize: "var(--translation-reading-size)" }}
+              dir="rtl"
+              lang="ur"
             >
-              <div className="border-t border-border/60 pt-3 pb-1">
-                <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
-                  اردو — جالندھری
-                </p>
-                <p
-                  className="font-arabic text-foreground/85 leading-[2] text-right"
-                  style={{ fontSize: "var(--translation-reading-size)" }}
-                  dir="rtl"
-                  lang="ur"
-                >
-                  {ayah.urdu}
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {ayah.urdu}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Tafseer — lazy-loaded, per-ayah */}
@@ -370,6 +343,10 @@ export default function SurahPage() {
 
   // Whether we've already done the initial scroll-to-saved (only once per mount)
   const hasScrolledRef = useRef(false);
+
+  // Container ref for IntersectionObserver — scoped to the ayah list, avoids
+  // a full document.querySelectorAll scan on every ayah-list render.
+  const ayahListRef = useRef<HTMLDivElement>(null);
 
   // ── Load surah data ──────────────────────────────────────────────────────
   const load = useCallback((num: number) => {
@@ -436,8 +413,13 @@ export default function SurahPage() {
   }, [ayahs.length]);
 
   // ── IntersectionObserver: track visible ayah + debounced save ─────────────
+  // Uses a containerRef scoped to the ayah list to avoid a full-document
+  // querySelectorAll on every observation cycle.
+  // Threshold simplified to a single value — reduces callback frequency by 3×.
   useEffect(() => {
     if (!ayahs.length || !surah) return;
+    const container = ayahListRef.current;
+    if (!container) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -466,10 +448,10 @@ export default function SurahPage() {
           });
         }, 1000);
       },
-      { threshold: [0.1, 0.5, 0.9], rootMargin: "-10% 0px -10% 0px" }
+      { threshold: 0.4, rootMargin: "-10% 0px -10% 0px" }
     );
 
-    const elements = document.querySelectorAll<Element>(`[data-ayah]`);
+    const elements = container.querySelectorAll<Element>("[data-ayah]");
     elements.forEach((el) => observer.observe(el));
 
     return () => {
@@ -710,7 +692,7 @@ export default function SurahPage() {
         {/* ── Ayah list ── */}
         {!isLoading && !error && displayedAyahs.length > 0 && (
           <>
-            <div className="space-y-4">
+            <div ref={ayahListRef} className="space-y-4">
               {displayedAyahs.map((ayah, idx) => (
                 <AyahCard
                   key={ayah.number}

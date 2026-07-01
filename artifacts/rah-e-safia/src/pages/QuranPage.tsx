@@ -1,16 +1,127 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Search, X, ChevronRight, BookMarked,
   Clock, ArrowRight, Play, Pause, Loader2,
 } from "lucide-react";
-import { surahs } from "@/lib/quran-data";
+import { surahs, type Surah } from "@/lib/quran-data";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/use-settings";
 import { useReadingProgress, relativeTime } from "@/lib/reading-progress";
 import { useQuranPlayer } from "@/context/QuranPlayerContext";
 import SoundBars from "@/components/quran/SoundBars";
+
+// ── Memoised row — only re-renders when player state for THIS surah changes ──
+interface SurahRowProps {
+  surah: Surah;
+  isActive: boolean;
+  isPlaying: boolean;
+  isLoading: boolean;
+  onNavigate: (number: number) => void;
+  onPlay: (surah: Surah) => void;
+}
+
+const SurahRow = memo(function SurahRow({
+  surah,
+  isActive,
+  isPlaying,
+  isLoading,
+  onNavigate,
+  onPlay,
+}: SurahRowProps) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 py-2 rounded-xl px-1 -mx-1 transition-colors duration-150",
+        isActive && "bg-primary/5"
+      )}
+    >
+      {/* ── Main tap area → navigate ── */}
+      <button
+        onClick={() => onNavigate(surah.number)}
+        className="flex-1 flex items-center gap-3 py-2 px-2 text-left group rounded-xl hover:bg-secondary/60 transition-colors duration-150 min-w-0"
+      >
+        {/* Surah number badge */}
+        <div className={cn(
+          "shrink-0 w-11 h-11 rounded-xl flex items-center justify-center shadow-sm transition-all duration-300",
+          isActive ? "gradient-primary shadow-primary/30 shadow-md" : "gradient-primary"
+        )}>
+          {isPlaying ? (
+            <SoundBars className="text-white" />
+          ) : (
+            <span className="text-white text-xs font-bold">{surah.number}</span>
+          )}
+        </div>
+
+        {/* Names — three-tier hierarchy */}
+        <div className="flex-1 min-w-0">
+          <p
+            className="font-arabic text-foreground leading-snug font-bold truncate"
+            dir="rtl"
+            style={{ fontSize: "clamp(1.1rem, 3.5vw, 1.35rem)" }}
+          >
+            {surah.arabicName}
+          </p>
+          <p className={cn(
+            "text-sm font-bold mt-0.5 leading-tight transition-colors duration-200",
+            isActive ? "text-primary" : "text-foreground/85"
+          )}>
+            {surah.name}
+          </p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className="text-xs text-muted-foreground">{surah.englishName}</span>
+            <span className="text-muted-foreground/40 text-xs">·</span>
+            <span
+              className={cn(
+                "text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none",
+                surah.type === "Meccan"
+                  ? "bg-primary/10 text-primary"
+                  : "bg-gold-muted text-gold"
+              )}
+            >
+              {surah.type}
+            </span>
+            <span className="text-muted-foreground/40 text-xs">·</span>
+            <span className="text-[11px] text-muted-foreground">{surah.verses} verses</span>
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <ChevronRight
+          className="shrink-0 w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150"
+          strokeWidth={2}
+        />
+      </button>
+
+      {/* ── Play button ── */}
+      <motion.button
+        whileTap={{ scale: 0.85 }}
+        transition={{ type: "spring", stiffness: 500, damping: 28 }}
+        onClick={() => onPlay(surah)}
+        aria-label={
+          isPlaying
+            ? `Pause ${surah.name}`
+            : `Play ${surah.name} from the beginning`
+        }
+        className={cn(
+          "shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
+          isActive
+            ? "gradient-primary text-white shadow-sm shadow-primary/30"
+            : "bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary"
+        )}
+      >
+        {isLoading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+        ) : isPlaying ? (
+          <Pause className="w-3.5 h-3.5" strokeWidth={2.5} />
+        ) : (
+          <Play className="w-3.5 h-3.5 ml-0.5" strokeWidth={2.5} />
+        )}
+      </motion.button>
+    </div>
+  );
+});
 
 export default function QuranPage() {
   const [query, setQuery] = useState("");
@@ -34,13 +145,17 @@ export default function QuranPage() {
 
   const saved = settings.resumeLastRead ? progress.quran : undefined;
 
-  function handlePlay(surahNumber: number, surahName: string, surahArabicName: string, verses: number) {
-    if (playerState.surahNumber === surahNumber) {
+  const handleNavigate = useCallback((number: number) => {
+    navigate(`/quran/${number}`);
+  }, [navigate]);
+
+  const handlePlay = useCallback((surah: Surah) => {
+    if (playerState.surahNumber === surah.number) {
       togglePlayPause();
     } else {
-      playAyah(surahNumber, 1, surahName, surahArabicName, verses);
+      playAyah(surah.number, 1, surah.name, surah.arabicName, surah.verses);
     }
-  }
+  }, [playerState.surahNumber, togglePlayPause, playAyah]);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -243,105 +358,21 @@ export default function QuranPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filtered.map((surah, idx) => {
+              {filtered.map((surah) => {
                 const isActive = playerState.surahNumber === surah.number;
                 const isPlaying = isActive && playerState.isPlaying;
                 const isLoading = isActive && playerState.isLoading;
 
                 return (
-                  <motion.div
+                  <SurahRow
                     key={surah.number}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2, delay: Math.min(idx * 0.012, 0.3) }}
-                    className={cn(
-                      "flex items-center gap-1 py-2 rounded-xl px-1 -mx-1 transition-colors duration-150",
-                      isActive && "bg-primary/5"
-                    )}
-                  >
-                    {/* ── Main tap area → navigate ── */}
-                    <button
-                      onClick={() => navigate(`/quran/${surah.number}`)}
-                      className="flex-1 flex items-center gap-3 py-2 px-2 text-left group rounded-xl hover:bg-secondary/60 transition-colors duration-150 min-w-0"
-                    >
-                      {/* Surah number badge */}
-                      <div className={cn(
-                        "shrink-0 w-11 h-11 rounded-xl flex items-center justify-center shadow-sm transition-all duration-300",
-                        isActive ? "gradient-primary shadow-primary/30 shadow-md" : "gradient-primary"
-                      )}>
-                        {isPlaying ? (
-                          <SoundBars className="text-white" />
-                        ) : (
-                          <span className="text-white text-xs font-bold">{surah.number}</span>
-                        )}
-                      </div>
-
-                      {/* Names — three-tier hierarchy */}
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="font-arabic text-foreground leading-snug font-bold truncate"
-                          dir="rtl"
-                          style={{ fontSize: "clamp(1.1rem, 3.5vw, 1.35rem)" }}
-                        >
-                          {surah.arabicName}
-                        </p>
-                        <p className={cn(
-                          "text-sm font-bold mt-0.5 leading-tight transition-colors duration-200",
-                          isActive ? "text-primary" : "text-foreground/85"
-                        )}>
-                          {surah.name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xs text-muted-foreground">{surah.englishName}</span>
-                          <span className="text-muted-foreground/40 text-xs">·</span>
-                          <span
-                            className={cn(
-                              "text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none",
-                              surah.type === "Meccan"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-gold-muted text-gold"
-                            )}
-                          >
-                            {surah.type}
-                          </span>
-                          <span className="text-muted-foreground/40 text-xs">·</span>
-                          <span className="text-[11px] text-muted-foreground">{surah.verses} verses</span>
-                        </div>
-                      </div>
-
-                      {/* Chevron */}
-                      <ChevronRight
-                        className="shrink-0 w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150"
-                        strokeWidth={2}
-                      />
-                    </button>
-
-                    {/* ── Play button ── */}
-                    <motion.button
-                      whileTap={{ scale: 0.85 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 28 }}
-                      onClick={() => handlePlay(surah.number, surah.name, surah.arabicName, surah.verses)}
-                      aria-label={
-                        isPlaying
-                          ? `Pause ${surah.name}`
-                          : `Play ${surah.name} from the beginning`
-                      }
-                      className={cn(
-                        "shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
-                        isActive
-                          ? "gradient-primary text-white shadow-sm shadow-primary/30"
-                          : "bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                      )}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
-                      ) : isPlaying ? (
-                        <Pause className="w-3.5 h-3.5" strokeWidth={2.5} />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 ml-0.5" strokeWidth={2.5} />
-                      )}
-                    </motion.button>
-                  </motion.div>
+                    surah={surah}
+                    isActive={isActive}
+                    isPlaying={isPlaying}
+                    isLoading={isLoading}
+                    onNavigate={handleNavigate}
+                    onPlay={handlePlay}
+                  />
                 );
               })}
             </div>
