@@ -31,6 +31,8 @@
 :root {
   --font-poppins: 'Poppins';
   --font-amiri: 'Amiri';
+  --arabic-reading-size: 20px;
+  --translation-reading-size: 14px;
 
   --background: 40 33% 96%;
   --foreground: 145 25% 12%;

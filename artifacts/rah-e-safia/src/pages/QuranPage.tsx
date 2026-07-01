@@ -139,8 +139,6 @@ export default function QuranPage() {
                 className="mb-4"
               >
                 <div className="w-full text-left rounded-2xl border border-gold/35 bg-gradient-to-r from-gold-muted/60 to-gold-muted/30 overflow-hidden shadow-sm group flex items-stretch">
-                  {/* Accent line */}
-                  <div className="absolute" />
                   <button
                     onClick={() => navigate(`/quran/${saved.surahNum}`)}
                     className="flex-1 text-left hover:from-gold-muted hover:to-gold-muted/50 transition-all duration-200"

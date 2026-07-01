@@ -123,7 +123,7 @@ const AyahCard = memo(function AyahCard({
 
       <div className="px-4 pb-4">
         {/* Arabic */}
-        <p className="font-arabic text-2xl text-foreground leading-[2.2] text-right py-3" dir="rtl" lang="ar">
+        <p className="font-arabic text-foreground leading-[2.2] text-right py-3" style={{ fontSize: "var(--arabic-reading-size)" }} dir="rtl" lang="ar">
           {ayah.arabic}
         </p>
 
@@ -135,7 +135,7 @@ const AyahCard = memo(function AyahCard({
                 <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
                   English — Sahih International
                 </p>
-                <p className="text-sm text-foreground/80 leading-relaxed">{ayah.english}</p>
+                <p className="text-foreground/80 leading-relaxed" style={{ fontSize: "var(--translation-reading-size)" }}>{ayah.english}</p>
               </div>
             </motion.div>
           )}
@@ -145,7 +145,7 @@ const AyahCard = memo(function AyahCard({
                 <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
                   اردو — جالندھری
                 </p>
-                <p className="font-arabic text-base text-foreground/85 leading-[2] text-right" dir="rtl" lang="ur">
+                <p className="font-arabic text-foreground/85 leading-[2] text-right" style={{ fontSize: "var(--translation-reading-size)" }} dir="rtl" lang="ur">
                   {ayah.urdu}
                 </p>
               </div>

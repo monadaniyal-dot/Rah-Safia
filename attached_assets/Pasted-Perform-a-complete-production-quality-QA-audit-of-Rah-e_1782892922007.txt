@@ -1,0 +1,174 @@
+Perform a complete production-quality QA audit of Rah-e-Safia.
+
+Objective:
+Systematically inspect the entire application for bugs, inconsistencies, UI issues, performance problems, and broken user flows. Fix only genuine issues without redesigning or adding new features.
+
+## Test Every Module
+
+### Home
+
+* Verify Daily Reflection loads correctly.
+* Verify Daily Dua loads correctly.
+* Verify Prayer Countdown updates correctly.
+* Verify Hijri Date is accurate.
+* Verify all cards are responsive.
+
+---
+
+### Quran
+
+Verify:
+
+* All 114 Surahs open correctly.
+* Every Ayah loads.
+* Search works correctly.
+* Continue Reading works.
+* Resume Last Read works.
+* Highlight Last Read Verse works.
+* Bookmarking works.
+* Play from Surah Index works.
+* Play from Bookmark works.
+* Audio synchronization works.
+* Translation switching works.
+* Tafseer switching works.
+* Font size changes work.
+
+---
+
+### Tafseer
+
+Verify:
+
+* All three Tafaseer load correctly.
+* Verse alignment is correct.
+* Switching Tafseer updates immediately.
+* No missing verses.
+* No incorrect mappings.
+
+---
+
+### Hadith
+
+Verify:
+
+* Every collection opens.
+* Search works.
+* Chapters load correctly.
+* Hadith numbering is correct.
+* Bookmarks function properly.
+* Performance remains smooth.
+
+---
+
+### Prayer
+
+Verify:
+
+* Prayer Times are accurate.
+* Countdown updates correctly.
+* Manual location works.
+* Automatic location works.
+* Madhhab selection updates calculations.
+* Calculation Method updates correctly.
+
+---
+
+### Qibla
+
+Verify:
+
+* Compass functions correctly.
+* Direction updates smoothly.
+* Permission handling is graceful.
+
+---
+
+### Settings
+
+Verify every setting:
+
+* Persists after restart.
+* Updates immediately.
+* Does not conflict with other settings.
+
+---
+
+### Navigation
+
+Verify:
+
+* Desktop navigation.
+* Mobile navigation.
+* Back button behavior.
+* Deep linking.
+* Scroll restoration.
+
+---
+
+### Responsiveness
+
+Inspect:
+
+* Mobile
+* Tablet
+* Desktop
+
+Look for:
+
+* Overflow
+* Clipping
+* Misalignment
+* Crowded layouts
+
+---
+
+### Accessibility
+
+Verify:
+
+* Readable typography.
+* Sufficient contrast.
+* Keyboard navigation (desktop).
+* Proper focus states.
+
+---
+
+### Error Handling
+
+Test:
+
+* No internet.
+* Slow internet.
+* API failures.
+* Missing data.
+* Notification permissions denied.
+* Location permissions denied.
+
+Ensure friendly user messages instead of technical errors.
+
+---
+
+### Performance
+
+Inspect:
+
+* Console warnings.
+* Console errors.
+* Unused imports.
+* React warnings.
+* Memory leaks.
+* Slow renders.
+
+Fix lightweight issues only.
+
+---
+
+## Deliverables
+
+After completion provide:
+
+1. Every issue found.
+2. Every issue fixed.
+3. Files modified.
+4. Remaining known issues (if any).
+5. Overall production readiness score out of 10.

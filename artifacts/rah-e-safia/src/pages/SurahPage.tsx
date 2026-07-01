@@ -257,7 +257,8 @@ const AyahCard = memo(function AyahCard({
       <div className="px-4 pb-4">
         {/* Arabic */}
         <p
-          className="font-arabic text-2xl leading-[2.2] text-right py-3 transition-colors duration-500 text-foreground"
+          className="font-arabic leading-[2.2] text-right py-3 transition-colors duration-500 text-foreground"
+          style={{ fontSize: "var(--arabic-reading-size)" }}
           dir="rtl"
           lang="ar"
         >
@@ -278,7 +279,7 @@ const AyahCard = memo(function AyahCard({
                 <p className="text-[10px] font-semibold text-gold/70 uppercase tracking-wide mb-1">
                   Transliteration
                 </p>
-                <p className="text-sm text-muted-foreground leading-relaxed italic">
+                <p className="text-muted-foreground leading-relaxed italic" style={{ fontSize: "var(--translation-reading-size)" }}>
                   {ayah.transliteration}
                 </p>
               </div>
@@ -300,7 +301,7 @@ const AyahCard = memo(function AyahCard({
                 <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wide mb-1.5">
                   English — Sahih International
                 </p>
-                <p className="text-sm text-foreground/80 leading-relaxed">
+                <p className="text-foreground/80 leading-relaxed" style={{ fontSize: "var(--translation-reading-size)" }}>
                   {ayah.english}
                 </p>
               </div>
@@ -320,7 +321,8 @@ const AyahCard = memo(function AyahCard({
                   اردو — جالندھری
                 </p>
                 <p
-                  className="font-arabic text-base text-foreground/85 leading-[2] text-right"
+                  className="font-arabic text-foreground/85 leading-[2] text-right"
+                  style={{ fontSize: "var(--translation-reading-size)" }}
                   dir="rtl"
                   lang="ur"
                 >
