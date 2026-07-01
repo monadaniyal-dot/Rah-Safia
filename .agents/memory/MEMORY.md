@@ -3,3 +3,4 @@
 - [Prayer notifications](prayer-notifications.md) — Browser Notification API via setTimeout, no service worker; works while page is open. schedulePrayerNotifications clears old timers.
 - [Location store](location-store.md) — Saved location in `rah-e-safia:saved-location` localStorage key; shared between PrayerTimesPage and QiblaFinderPage.
 - [Aladhan API params](aladhan-params.md) — method: MWL=1,ISNA=2,Egypt=3,Makkah=4,Karachi=5; school: shafi=0,hanafi=1.
+- [Player progress context split](player-progress-context.md) — currentTime/duration live in PlayerProgressContext; usePlayerProgress() is for MiniPlayer/FullPlayer only. Main QuranPlayerContext never fires on timeupdate.
