@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme as useNextTheme } from "next-themes";
@@ -38,7 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSettings } from "@/lib/use-settings";
+import { useSettings, type AppSettings } from "@/lib/use-settings";
 import {
   requestNotificationPermission,
   getNotificationPermission,
@@ -58,9 +58,12 @@ import {
 
 const APP_VERSION = "1.0.0";
 
-// ─── Reusable primitives ─────────────────────────────────────────────────────
+// ─── Reusable primitives (all memoized) ──────────────────────────────────────
+// Memoized so they only re-render when their own props change.
+// Combined with stable onChange callbacks in SettingsPage, changing one setting
+// causes only that control (and its direct parent row) to re-render.
 
-function Toggle({
+const Toggle = memo(function Toggle({
   value,
   onChange,
   disabled = false,
@@ -91,9 +94,9 @@ function Toggle({
       />
     </button>
   );
-}
+});
 
-function RangeSlider({
+const RangeSlider = memo(function RangeSlider({
   value,
   min,
   max,
@@ -131,9 +134,9 @@ function RangeSlider({
       </span>
     </div>
   );
-}
+});
 
-function SelectField({
+const SelectField = memo(function SelectField({
   value,
   onChange,
   options,
@@ -163,9 +166,11 @@ function SelectField({
       ))}
     </select>
   );
-}
+});
 
 // ─── Section card ─────────────────────────────────────────────────────────────
+// Not memoized — receives `children` which is a new ReactNode every render.
+// The cost is lightweight (just JSX construction, no DOM work).
 
 function SectionCard({
   icon: Icon,
@@ -257,7 +262,7 @@ function SettingRow({
 
 // ─── Action button ────────────────────────────────────────────────────────────
 
-function ActionButton({
+const ActionButton = memo(function ActionButton({
   label,
   description,
   icon: Icon,
@@ -319,11 +324,11 @@ function ActionButton({
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" strokeWidth={1.5} />
     </button>
   );
-}
+});
 
 // ─── About row ────────────────────────────────────────────────────────────────
 
-function AboutRow({
+const AboutRow = memo(function AboutRow({
   icon: Icon,
   label,
   value,
@@ -365,7 +370,7 @@ function AboutRow({
     );
   }
   return <div>{inner}</div>;
-}
+});
 
 // ─── Theme selector ───────────────────────────────────────────────────────────
 
@@ -375,7 +380,8 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark", icon: Moon },
 ] as const;
 
-function ThemeSelector() {
+// Memoized: manages its own theme state via next-themes, no external props that change.
+const ThemeSelector = memo(function ThemeSelector() {
   const { theme, setTheme } = useNextTheme();
 
   return (
@@ -410,7 +416,7 @@ function ThemeSelector() {
       })}
     </div>
   );
-}
+});
 
 // ─── Data options ─────────────────────────────────────────────────────────────
 
@@ -466,6 +472,105 @@ const REMINDER_TIME_PRESETS = [
   { value: "09:00", label: "9:00 AM" },
 ];
 
+// ─── Per-prayer notification row ─────────────────────────────────────────────
+// Extracted to avoid creating new onChange closures inside a .map() call.
+// With this component memoized and receiving a stable onUpdate callback,
+// each row only re-renders when its own value changes.
+
+const PrayerNotifToggleRow = memo(function PrayerNotifToggleRow({
+  label,
+  arabic,
+  settingKey,
+  value,
+  onUpdate,
+}: {
+  label: string;
+  arabic: string;
+  settingKey: keyof AppSettings;
+  value: boolean;
+  onUpdate: (key: keyof AppSettings, v: boolean) => void;
+}) {
+  const onChange = useCallback(
+    (v: boolean) => onUpdate(settingKey, v),
+    [onUpdate, settingKey],
+  );
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <div className="flex items-center gap-2">
+        <span className="font-arabic text-sm text-muted-foreground" dir="rtl">{arabic}</span>
+        <span className="text-sm text-foreground font-medium">{label}</span>
+      </div>
+      <Toggle value={value} onChange={onChange} />
+    </div>
+  );
+});
+
+// ─── Prayer reminder chips ────────────────────────────────────────────────────
+// Memoized so the chip row only re-renders when prayerReminderMinutes changes.
+
+const PRAYER_REMINDER_MINUTES = [0, 5, 10, 15] as const;
+
+const PrayerReminderChips = memo(function PrayerReminderChips({
+  value,
+  onChange,
+}: {
+  value: 0 | 5 | 10 | 15;
+  onChange: (v: 0 | 5 | 10 | 15) => void;
+}) {
+  return (
+    <div className="flex gap-1.5 flex-wrap justify-end">
+      {PRAYER_REMINDER_MINUTES.map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all",
+            value === m
+              ? "gradient-primary text-white border-transparent shadow-sm"
+              : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
+          )}
+        >
+          {m === 0 ? "At time" : `${m}m`}
+        </button>
+      ))}
+    </div>
+  );
+});
+
+// ─── Reminder time chips ──────────────────────────────────────────────────────
+// Memoized so chip row only re-renders when reminderTime changes.
+
+const ReminderTimeChips = memo(function ReminderTimeChips({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {REMINDER_TIME_PRESETS.map((p) => (
+        <button
+          key={p.value}
+          onClick={() => !disabled && onChange(p.value)}
+          disabled={disabled}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+            value === p.value
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-secondary text-foreground hover:bg-accent",
+            disabled && "cursor-not-allowed"
+          )}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+});
+
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -485,8 +590,52 @@ export default function SettingsPage() {
   const [cityError, setCityError] = useState("");
   const [savedCity, setSavedCity] = useState<SavedLocation | null>(() => getSavedLocation());
 
-  // When autoLocation toggles ON, clear manual city
-  const handleAutoLocationToggle = (v: boolean) => {
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const notifGranted = notifPermission === "granted";
+  const notifDenied  = notifPermission === "denied";
+
+  const anyDailyEnabled = useMemo(
+    () =>
+      settings.dailyReflectionNotification ||
+      settings.dailyDuaNotification ||
+      settings.dailyInspirationReminder,
+    [settings.dailyReflectionNotification, settings.dailyDuaNotification, settings.dailyInspirationReminder],
+  );
+
+  // ── Per-key stable updaters ─────────────────────────────────────────────────
+  // `update` is already stable (useCallback([]) in useSettings).
+  // Each of these is therefore also stable — they never recreate between renders.
+  // Passing these as `onChange` props to memoized leaf components means the leaf
+  // only re-renders when its own setting value changes, not on every other update.
+
+  const updateArabicFontSize       = useCallback((v: number)  => update("arabicFontSize", v),       [update]);
+  const updateTranslationFontSize  = useCallback((v: number)  => update("translationFontSize", v),  [update]);
+  const updateDefaultTranslation   = useCallback((v: string)  => update("defaultTranslation", v),   [update]);
+  const updateDefaultTafseer       = useCallback((v: string)  => update("defaultTafseer", v),       [update]);
+  const updateShowTransliteration  = useCallback((v: boolean) => update("showTransliteration", v),  [update]);
+  const updateCalculationMethod    = useCallback((v: string)  => update("calculationMethod", v),    [update]);
+  const updateMadhab               = useCallback((v: string)  => update("madhab", v),               [update]);
+  const updatePrayerReminderMinutes = useCallback(
+    (v: 0 | 5 | 10 | 15) => update("prayerReminderMinutes", v),
+    [update],
+  );
+  const updateAppLanguage          = useCallback((v: string)  => update("appLanguage", v),          [update]);
+  const updateTranslationLanguage  = useCallback((v: string)  => update("translationLanguage", v),  [update]);
+  const updateResumeLastRead       = useCallback((v: boolean) => update("resumeLastRead", v),       [update]);
+  const updateSmoothScrolling      = useCallback((v: boolean) => update("smoothScrolling", v),      [update]);
+  const updateHighlightLastReadVerse = useCallback((v: boolean) => update("highlightLastReadVerse", v), [update]);
+
+  // Stable handler for per-prayer notification toggles rendered in a .map().
+  // PrayerNotifToggleRow wraps this with its own useCallback keyed to settingKey
+  // so each row's onChange is individually stable.
+  const updatePrayerNotifKey = useCallback(
+    (key: keyof AppSettings, v: boolean) => update(key, v as AppSettings[typeof key]),
+    [update],
+  );
+
+  // ── Complex handlers ────────────────────────────────────────────────────────
+
+  const handleAutoLocationToggle = useCallback((v: boolean) => {
     update("autoLocation", v);
     if (v) {
       clearSavedLocation();
@@ -494,25 +643,165 @@ export default function SettingsPage() {
       setCityInput("");
       setCityError("");
     }
-  };
+  }, [update]);
 
-  // Request notification permission
-  async function handleRequestPermission() {
+  const handleRequestPermission = useCallback(async () => {
     const perm = await requestNotificationPermission();
     setNotifPermission(perm);
-    if (perm === "granted" && !settings.prayerNotifications) {
-      update("prayerNotifications", true);
-    }
-  }
+  }, []);
 
-  // When prayerNotifications toggled on, prompt for permission if needed
-  const handlePrayerNotifToggle = async (v: boolean) => {
+  const handlePrayerNotifToggle = useCallback(async (v: boolean) => {
     update("prayerNotifications", v);
     if (v) {
       const perm = await requestNotificationPermission();
       setNotifPermission(perm);
     }
-  };
+  }, [update]);
+
+  const handleDailyToggle = useCallback(async (
+    key: "dailyReflectionNotification" | "dailyDuaNotification" | "dailyInspirationReminder",
+    value: boolean,
+  ) => {
+    if (value) {
+      const perm = await requestNotificationPermission();
+      setNotifPermission(perm);
+      if (perm !== "granted") return;
+    }
+    update(key, value);
+  }, [update]);
+
+  const handleDailyReflectionToggle  = useCallback((v: boolean) => handleDailyToggle("dailyReflectionNotification", v),  [handleDailyToggle]);
+  const handleDailyDuaToggle         = useCallback((v: boolean) => handleDailyToggle("dailyDuaNotification", v),         [handleDailyToggle]);
+  const handleDailyInspirationToggle = useCallback((v: boolean) => handleDailyToggle("dailyInspirationReminder", v),     [handleDailyToggle]);
+
+  const handleReminderTimeChange = useCallback((hhmm: string) => {
+    update("reminderTime", hhmm);
+  }, [update]);
+
+  const [testSent, setTestSent] = useState(false);
+  const handleTestNotification = useCallback(() => {
+    if (testSent) return;
+    try {
+      const enabled = [
+        settings.dailyReflectionNotification && "Daily Ayah",
+        settings.dailyDuaNotification && "Daily Dua",
+        settings.dailyInspirationReminder && "Daily Inspiration",
+      ].filter(Boolean) as string[];
+      const body = enabled.length
+        ? `Active reminders: ${enabled.join(", ")}. Scheduled for ${formatReminderTime(settings.reminderTime)}.`
+        : "Your daily reminders are set up correctly.";
+      new Notification("✅ Rah-e-Safia — Test Notification", {
+        body,
+        icon: "/favicon.ico",
+        tag: "rah-e-safia:test",
+        silent: true,
+      });
+    } catch {}
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 3000);
+  }, [testSent, settings.dailyReflectionNotification, settings.dailyDuaNotification, settings.dailyInspirationReminder, settings.reminderTime]);
+
+  const handleSaveCity = useCallback(async () => {
+    const q = cityInput.trim();
+    if (!q) return;
+    setCityError("");
+    setCityLoading(true);
+    try {
+      const loc = await forwardGeocodeCity(q);
+      saveLocation(loc);
+      setSavedCity(loc);
+      setCityInput("");
+    } catch (e: unknown) {
+      setCityError(e instanceof Error ? e.message : "City not found.");
+    } finally {
+      setCityLoading(false);
+    }
+  }, [cityInput]);
+
+  const handleClearLocation = useCallback(() => {
+    clearSavedLocation();
+    setSavedCity(null);
+    setCityInput("");
+    setCityError("");
+  }, []);
+
+  const handleClear = useCallback((key: string, action: () => void) => {
+    action();
+    setClearDone((p) => ({ ...p, [key]: true }));
+    setTimeout(() => setClearDone((p) => ({ ...p, [key]: false })), 2000);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    if (!resetConfirm) {
+      setResetConfirm(true);
+      setTimeout(() => setResetConfirm(false), 4000);
+      return;
+    }
+    reset();
+    setResetConfirm(false);
+  }, [resetConfirm, reset]);
+
+  const handleShare = useCallback(() => {
+    if (navigator.share) {
+      navigator
+        .share({
+          title: "Rah-e-Safia — Your Islamic Companion",
+          text: "A beautiful Islamic companion app with Quran, Hadith, Tafseer, Prayer Times, and more.",
+          url: window.location.origin,
+        })
+        .catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.origin).catch(() => {});
+    }
+  }, []);
+
+  const handleNavigatePrivacy = useCallback(() => navigate("/privacy"), [navigate]);
+  const handleNavigateTerms   = useCallback(() => navigate("/terms"),   [navigate]);
+
+  // Stable clear-action callbacks for Data section
+  const handleClearCache = useCallback(() =>
+    handleClear("cache", () => {
+      const preserve = [
+        "rah-e-safia:settings",
+        "rah-e-safia:bookmarks",
+        "rah-e-safia:dua-bookmarks",
+        "rah-e-safia:reading-progress",
+        "rah-e-safia:saved-location",
+      ];
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("rah-e-safia:") && !preserve.includes(k))
+        .forEach((k) => localStorage.removeItem(k));
+    }),
+  [handleClear]);
+
+  const handleRefreshQuran = useCallback(() =>
+    handleClear("quran", () => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("rah-e-safia:quran"))
+        .forEach((k) => localStorage.removeItem(k));
+    }),
+  [handleClear]);
+
+  const handleRefreshHadith = useCallback(() =>
+    handleClear("hadith", () => window.location.reload()),
+  [handleClear]);
+
+  const handleRefreshTafseer = useCallback(() =>
+    handleClear("tafseer", () => {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("rah-e-safia:tafseer"))
+        .forEach((k) => localStorage.removeItem(k));
+    }),
+  [handleClear]);
+
+  const handleClearBookmarks = useCallback(() =>
+    handleClear("bookmarks", () => {
+      localStorage.removeItem("rah-e-safia:bookmarks");
+      localStorage.removeItem("rah-e-safia:dua-bookmarks");
+    }),
+  [handleClear]);
+
+  // ── Effects ─────────────────────────────────────────────────────────────────
 
   // Re-check permission on mount (user may have changed in browser settings)
   useEffect(() => {
@@ -534,110 +823,7 @@ export default function SettingsPage() {
     settings.reminderTime,
   ]);
 
-  // Toggle a daily reminder — request permission first if needed
-  async function handleDailyToggle(
-    key: "dailyReflectionNotification" | "dailyDuaNotification" | "dailyInspirationReminder",
-    value: boolean
-  ) {
-    if (value) {
-      const perm = await requestNotificationPermission();
-      setNotifPermission(perm);
-      if (perm !== "granted") return; // Don't enable if permission denied
-    }
-    update(key, value);
-  }
-
-  // Update shared reminder time and reschedule
-  function handleReminderTimeChange(hhmm: string) {
-    update("reminderTime", hhmm);
-  }
-
-  // Test notification — fires immediately so the user can verify permissions
-  const [testSent, setTestSent] = useState(false);
-  function handleTestNotification() {
-    if (testSent) return;
-    try {
-      const enabled = [
-        settings.dailyReflectionNotification && "Daily Ayah",
-        settings.dailyDuaNotification && "Daily Dua",
-        settings.dailyInspirationReminder && "Daily Inspiration",
-      ].filter(Boolean) as string[];
-      const body = enabled.length
-        ? `Active reminders: ${enabled.join(", ")}. Scheduled for ${formatReminderTime(settings.reminderTime)}.`
-        : "Your daily reminders are set up correctly.";
-      new Notification("✅ Rah-e-Safia — Test Notification", {
-        body,
-        icon: "/favicon.ico",
-        tag: "rah-e-safia:test",
-        silent: true,
-      });
-    } catch {}
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
-  }
-
-  // Manual city save
-  async function handleSaveCity() {
-    const q = cityInput.trim();
-    if (!q) return;
-    setCityError("");
-    setCityLoading(true);
-    try {
-      const loc = await forwardGeocodeCity(q);
-      saveLocation(loc);
-      setSavedCity(loc);
-      setCityInput("");
-    } catch (e: unknown) {
-      setCityError(e instanceof Error ? e.message : "City not found.");
-    } finally {
-      setCityLoading(false);
-    }
-  }
-
-  function handleClearLocation() {
-    clearSavedLocation();
-    setSavedCity(null);
-    setCityInput("");
-    setCityError("");
-  }
-
-  function handleClear(key: string, action: () => void) {
-    action();
-    setClearDone((p) => ({ ...p, [key]: true }));
-    setTimeout(() => setClearDone((p) => ({ ...p, [key]: false })), 2000);
-  }
-
-  function handleReset() {
-    if (!resetConfirm) {
-      setResetConfirm(true);
-      setTimeout(() => setResetConfirm(false), 4000);
-      return;
-    }
-    reset();
-    setResetConfirm(false);
-  }
-
-  function handleShare() {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "Rah-e-Safia — Your Islamic Companion",
-          text: "A beautiful Islamic companion app with Quran, Hadith, Tafseer, Prayer Times, and more.",
-          url: window.location.origin,
-        })
-        .catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.origin).catch(() => {});
-    }
-  }
-
-  const notifGranted = notifPermission === "granted";
-  const notifDenied = notifPermission === "denied";
-
-  const anyDailyEnabled =
-    settings.dailyReflectionNotification ||
-    settings.dailyDuaNotification ||
-    settings.dailyInspirationReminder;
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-full flex flex-col">
@@ -705,7 +891,7 @@ export default function SettingsPage() {
               min={16}
               max={32}
               step={2}
-              onChange={(v) => update("arabicFontSize", v)}
+              onChange={updateArabicFontSize}
               formatValue={(v) => `${v}px`}
             />
             <p
@@ -728,7 +914,7 @@ export default function SettingsPage() {
               min={11}
               max={18}
               step={1}
-              onChange={(v) => update("translationFontSize", v)}
+              onChange={updateTranslationFontSize}
               formatValue={(v) => `${v}px`}
             />
             <p
@@ -746,7 +932,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.defaultTranslation}
-              onChange={(v) => update("defaultTranslation", v)}
+              onChange={updateDefaultTranslation}
               options={TRANSLATION_OPTIONS}
             />
           </SettingRow>
@@ -758,7 +944,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.defaultTafseer}
-              onChange={(v) => update("defaultTafseer", v)}
+              onChange={updateDefaultTafseer}
               options={TAFSEER_OPTIONS}
             />
           </SettingRow>
@@ -770,7 +956,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.showTransliteration}
-              onChange={(v) => update("showTransliteration", v)}
+              onChange={updateShowTransliteration}
             />
           </SettingRow>
 
@@ -810,7 +996,7 @@ export default function SettingsPage() {
                 className="overflow-hidden"
               >
                 {notifGranted ? (
-                  /* ── Per-prayer toggles ── */
+                  /* ── Per-prayer toggles — each is its own memoized component ── */
                   <div className="px-5 py-3 bg-primary/4 border-t border-border/50">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
                       <BellRing className="w-3 h-3" strokeWidth={2} />
@@ -818,16 +1004,14 @@ export default function SettingsPage() {
                     </p>
                     <div className="space-y-1">
                       {PRAYER_NOTIF_TOGGLES.map(({ key, label, arabic }) => (
-                        <div key={key} className="flex items-center justify-between py-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-arabic text-sm text-muted-foreground" dir="rtl">{arabic}</span>
-                            <span className="text-sm text-foreground font-medium">{label}</span>
-                          </div>
-                          <Toggle
-                            value={settings[key]}
-                            onChange={(v) => update(key, v)}
-                          />
-                        </div>
+                        <PrayerNotifToggleRow
+                          key={key}
+                          label={label}
+                          arabic={arabic}
+                          settingKey={key}
+                          value={settings[key]}
+                          onUpdate={updatePrayerNotifKey}
+                        />
                       ))}
                     </div>
                   </div>
@@ -868,22 +1052,10 @@ export default function SettingsPage() {
             label="Prayer Reminder"
             description="How far ahead to notify before prayer"
           >
-            <div className="flex gap-1.5 flex-wrap justify-end">
-              {([0, 5, 10, 15] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => update("prayerReminderMinutes", m)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all",
-                    settings.prayerReminderMinutes === m
-                      ? "gradient-primary text-white border-transparent shadow-sm"
-                      : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
-                  )}
-                >
-                  {m === 0 ? "At time" : `${m}m`}
-                </button>
-              ))}
-            </div>
+            <PrayerReminderChips
+              value={settings.prayerReminderMinutes}
+              onChange={updatePrayerReminderMinutes}
+            />
           </SettingRow>
 
           {/* Calculation Method */}
@@ -894,7 +1066,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.calculationMethod}
-              onChange={(v) => update("calculationMethod", v)}
+              onChange={updateCalculationMethod}
               options={CALCULATION_METHODS}
             />
           </SettingRow>
@@ -907,7 +1079,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.madhab}
-              onChange={(v) => update("madhab", v)}
+              onChange={updateMadhab}
               options={MADHAB_OPTIONS}
             />
           </SettingRow>
@@ -996,7 +1168,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.appLanguage}
-              onChange={(v) => update("appLanguage", v)}
+              onChange={updateAppLanguage}
               options={APP_LANGUAGE_OPTIONS}
             />
           </SettingRow>
@@ -1009,7 +1181,7 @@ export default function SettingsPage() {
           >
             <SelectField
               value={settings.translationLanguage}
-              onChange={(v) => update("translationLanguage", v)}
+              onChange={updateTranslationLanguage}
               options={TRANSLATION_LANGUAGE_OPTIONS}
             />
           </SettingRow>
@@ -1070,10 +1242,7 @@ export default function SettingsPage() {
                         </p>
                       </div>
                       <button
-                        onClick={async () => {
-                          const perm = await requestNotificationPermission();
-                          setNotifPermission(perm);
-                        }}
+                        onClick={handleRequestPermission}
                         className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
                       >
                         Allow
@@ -1093,7 +1262,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.dailyReflectionNotification}
-              onChange={(v) => handleDailyToggle("dailyReflectionNotification", v)}
+              onChange={handleDailyReflectionToggle}
             />
           </SettingRow>
 
@@ -1105,7 +1274,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.dailyDuaNotification}
-              onChange={(v) => handleDailyToggle("dailyDuaNotification", v)}
+              onChange={handleDailyDuaToggle}
             />
           </SettingRow>
 
@@ -1117,7 +1286,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.dailyInspirationReminder}
-              onChange={(v) => handleDailyToggle("dailyInspirationReminder", v)}
+              onChange={handleDailyInspirationToggle}
             />
           </SettingRow>
 
@@ -1130,24 +1299,11 @@ export default function SettingsPage() {
             dim={!anyDailyEnabled}
           >
             {/* Preset chips */}
-            <div className="flex flex-wrap gap-2">
-              {REMINDER_TIME_PRESETS.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => !(!anyDailyEnabled) && handleReminderTimeChange(p.value)}
-                  disabled={!anyDailyEnabled}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
-                    settings.reminderTime === p.value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-secondary text-foreground hover:bg-accent",
-                    !anyDailyEnabled && "cursor-not-allowed"
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <ReminderTimeChips
+              value={settings.reminderTime}
+              disabled={!anyDailyEnabled}
+              onChange={handleReminderTimeChange}
+            />
 
             {/* Custom time input */}
             <div className="flex items-center gap-3 mt-1">
@@ -1261,7 +1417,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.resumeLastRead}
-              onChange={(v) => update("resumeLastRead", v)}
+              onChange={updateResumeLastRead}
             />
           </SettingRow>
 
@@ -1281,7 +1437,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.smoothScrolling}
-              onChange={(v) => update("smoothScrolling", v)}
+              onChange={updateSmoothScrolling}
             />
           </SettingRow>
 
@@ -1292,7 +1448,7 @@ export default function SettingsPage() {
           >
             <Toggle
               value={settings.highlightLastReadVerse}
-              onChange={(v) => update("highlightLastReadVerse", v)}
+              onChange={updateHighlightLastReadVerse}
             />
           </SettingRow>
         </SectionCard>
@@ -1303,65 +1459,35 @@ export default function SettingsPage() {
             label="Clear Cache"
             description="Clears all locally cached app data"
             icon={Trash2}
-            onClick={() =>
-              handleClear("cache", () => {
-                const preserve = [
-                  "rah-e-safia:settings",
-                  "rah-e-safia:bookmarks",
-                  "rah-e-safia:dua-bookmarks",
-                  "rah-e-safia:reading-progress",
-                  "rah-e-safia:saved-location",
-                ];
-                Object.keys(localStorage)
-                  .filter((k) => k.startsWith("rah-e-safia:") && !preserve.includes(k))
-                  .forEach((k) => localStorage.removeItem(k));
-              })
-            }
+            onClick={handleClearCache}
             done={clearDone["cache"]}
           />
           <ActionButton
             label="Refresh Quran Data"
             description="Re-fetches Quran text and translations"
             icon={RefreshCw}
-            onClick={() =>
-              handleClear("quran", () => {
-                Object.keys(localStorage)
-                  .filter((k) => k.startsWith("rah-e-safia:quran"))
-                  .forEach((k) => localStorage.removeItem(k));
-              })
-            }
+            onClick={handleRefreshQuran}
             done={clearDone["quran"]}
           />
           <ActionButton
             label="Refresh Hadith Data"
             description="Hadith data is cached for this session"
             icon={RefreshCw}
-            onClick={() => handleClear("hadith", () => window.location.reload())}
+            onClick={handleRefreshHadith}
             done={clearDone["hadith"]}
           />
           <ActionButton
             label="Refresh Tafseer Data"
             description="Re-fetches commentary from Quran.com API"
             icon={RefreshCw}
-            onClick={() =>
-              handleClear("tafseer", () => {
-                Object.keys(localStorage)
-                  .filter((k) => k.startsWith("rah-e-safia:tafseer"))
-                  .forEach((k) => localStorage.removeItem(k));
-              })
-            }
+            onClick={handleRefreshTafseer}
             done={clearDone["tafseer"]}
           />
           <ActionButton
             label="Clear Bookmarks Cache"
             description="Removes all saved ayahs and duas"
             icon={Trash2}
-            onClick={() =>
-              handleClear("bookmarks", () => {
-                localStorage.removeItem("rah-e-safia:bookmarks");
-                localStorage.removeItem("rah-e-safia:dua-bookmarks");
-              })
-            }
+            onClick={handleClearBookmarks}
             done={clearDone["bookmarks"]}
           />
           <div className="border-t border-border/50">
@@ -1416,8 +1542,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="border-t border-border/50 divide-y divide-border/50">
-            <AboutRow icon={Shield} label="Privacy Policy" onClick={() => navigate("/privacy")} />
-            <AboutRow icon={Info} label="Terms & Conditions" onClick={() => navigate("/terms")} />
+            <AboutRow icon={Shield} label="Privacy Policy" onClick={handleNavigatePrivacy} />
+            <AboutRow icon={Info} label="Terms & Conditions" onClick={handleNavigateTerms} />
             <AboutRow icon={Mail} label="Contact Us" href="mailto:contact@rah-e-safia.app" />
             <AboutRow icon={Star} label="Rate the App" href="#" />
             <div
