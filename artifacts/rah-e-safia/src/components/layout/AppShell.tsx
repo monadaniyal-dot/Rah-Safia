@@ -28,7 +28,7 @@ function AppShellInner({ children }: AppShellProps) {
               : "flex-1 pb-20 lg:pb-0 overflow-y-auto"
           }
         >
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             <motion.div
               key={location}
               initial={{ opacity: 0, y: 6 }}
