@@ -20,7 +20,11 @@ export default function BottomNav() {
   const isArabic = lang === "ar";
   const { state: playerState, openFullPlayer } = useQuranPlayer();
 
-  const isMoreActive = moreItems.some((n) => n.path === location);
+  const isMoreActive = moreItems.some((n) =>
+    n.path === "/"
+      ? location === "/"
+      : location === n.path || location.startsWith(n.path + "/"),
+  );
   const playerActive = playerState.surahNumber !== null;
 
   function handleNavClick(path: string) {
@@ -87,7 +91,10 @@ export default function BottomNav() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {moreItems.map((item, i) => {
                 const Icon = item.icon;
-                const isActive = location === item.path;
+                const isActive =
+                  item.path === "/"
+                    ? location === "/"
+                    : location === item.path || location.startsWith(item.path + "/");
 
                 return (
                   <motion.button
@@ -195,7 +202,10 @@ export default function BottomNav() {
           {/* Primary items */}
           {primaryItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location === item.path;
+            const isActive =
+              item.path === "/"
+                ? location === "/"
+                : location === item.path || location.startsWith(item.path + "/");
             const isQuran = item.id === "quran";
 
             return (

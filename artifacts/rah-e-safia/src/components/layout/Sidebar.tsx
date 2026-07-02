@@ -45,7 +45,10 @@ export default function Sidebar() {
         </p>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location === item.path;
+          const isActive =
+            item.path === "/"
+              ? location === "/"
+              : location === item.path || location.startsWith(item.path + "/");
 
           return (
             <motion.button
