@@ -49,7 +49,7 @@ export const navItems: NavItem[] = [
   {
     id: "qibla",
     label: "Qibla Finder",
-    arabicLabel: "القبلة",
+    arabicLabel: "اتجاه القبلة",
     icon: Compass,
     path: "/qibla",
   },
