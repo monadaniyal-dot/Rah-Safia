@@ -588,13 +588,13 @@ export default function PrayerTimesPage() {
               />
             ))}
           </div>
-        ) : (
+        ) : isBusy ? (
           <div className="space-y-3">
             {PRAYER_META.map((meta) => (
               <SkeletonCard key={meta.id} period={meta.period} />
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Footer */}
         <motion.p
