@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share2, Copy, Bookmark, BookmarkCheck, Check,
@@ -29,6 +29,12 @@ function persistSaved(s: Set<string>) {
 
 function useSaved(key: string) {
   const [saved, setSaved] = useState(() => loadSaved().has(key));
+
+  // Re-sync when key changes (e.g. "" → real key after a retry cycle).
+  useEffect(() => {
+    setSaved(loadSaved().has(key));
+  }, [key]);
+
   const toggle = useCallback(() => {
     setSaved((prev) => {
       const all = loadSaved();
@@ -48,8 +54,13 @@ type ActionState = "idle" | "copied" | "shared";
 function useActions(getText: () => string) {
   const [state, setState] = useState<ActionState>("idle");
 
+  // Keep a ref so share/copy always use the latest getText without needing to
+  // recreate the callbacks (avoids ActionBar re-renders on every content change).
+  const getTextRef = useRef(getText);
+  useEffect(() => { getTextRef.current = getText; });
+
   const share = useCallback(async () => {
-    const text = getText();
+    const text = getTextRef.current();
     if (navigator.share) {
       try { await navigator.share({ text }); return; } catch { /* cancelled */ }
     }
@@ -58,17 +69,14 @@ function useActions(getText: () => string) {
       setState("shared");
       setTimeout(() => setState("idle"), 2000);
     } catch { /* blocked */ }
-  // getText is a stable useCallback from the caller — safe to omit from deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(getText());
+      await navigator.clipboard.writeText(getTextRef.current());
       setState("copied");
       setTimeout(() => setState("idle"), 2000);
     } catch { /* blocked */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { state, share, copy };
@@ -456,30 +464,34 @@ export default function DailyInspiration() {
 
   const handleRetry = useCallback(() => setRetryKey((k) => k + 1), []);
 
-  // Show the unavailable state if any piece of content failed to load
-  if (!ayah || !hadith || !dua) {
-    return <DailyContentUnavailable onRetry={handleRetry} />;
-  }
+  // Keys computed unconditionally — empty string when data is null (safe: useSaved
+  // just reads localStorage and returns false for an empty key).
+  const ayahKey   = ayah   ? `ayah-${ayah.surah}-${ayah.ayah}` : "";
+  const hadithKey = hadith ? `hadith-${hadith.reference}`       : "";
 
-  const ayahKey   = `ayah-${ayah.surah}-${ayah.ayah}`;
-  const hadithKey = `hadith-${hadith.reference}`;
-
+  // All hooks must be called unconditionally — before any early return.
   const { saved: ayahSaved,   toggle: toggleAyahSave   } = useSaved(ayahKey);
   const { saved: hadithSaved, toggle: toggleHadithSave } = useSaved(hadithKey);
 
   // Stable text getters for the action bars — useCallback so useActions' share/copy
   // are created once and don't force ActionBar re-renders through new references.
   const getAyahText = useCallback(
-    () => `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    () => ayah ? `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ` : "",
     [ayah]
   );
   const getHadithText = useCallback(
-    () => `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    () => hadith ? `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ` : "",
     [hadith]
   );
 
   const { state: ayahActionState,   share: shareAyah,   copy: copyAyah   } = useActions(getAyahText);
   const { state: hadithActionState, share: shareHadith, copy: copyHadith } = useActions(getHadithText);
+
+  // Show the unavailable state if any piece of content failed to load.
+  // This return is now AFTER all hooks — Rules of Hooks compliant.
+  if (!ayah || !hadith || !dua) {
+    return <DailyContentUnavailable onRetry={handleRetry} />;
+  }
 
   return (
     <motion.section

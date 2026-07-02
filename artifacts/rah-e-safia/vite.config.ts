@@ -41,7 +41,8 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
-    historyApiFallback: true,
+    // Vite serves index.html for all unmatched routes by default (appType: 'spa'),
+    // so no historyApiFallback option is needed here.
   },
   preview: {
     port,
