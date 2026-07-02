@@ -1,4 +1,5 @@
 - [DailyInspiration hooks fix](daily-inspiration-hooks.md) — hooks after conditional return caused blank page on Home→Quran click; all hooks now before early return.
+- [Lazy preload navigation fix](lazy-preload-navigation.md) — first-nav blank page: start all import() at module level so lazy() never suspends; removing mode="wait" alone is not enough.
 - [Settings cross-component reactivity](settings-reactivity.md) — useSettings dispatches custom event on update; Sidebar/BottomNav listen for it via useAppLanguage hook.
 - [Quran API parametric fetch](quran-api-pattern.md) — fetchSurah accepts {edition, transliteration} options; cache key is `${num}:${edition}:${transliteration}`.
 - [Prayer notifications](prayer-notifications.md) — Browser Notification API via setTimeout, no service worker; works while page is open. schedulePrayerNotifications clears old timers.

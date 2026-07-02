@@ -5,20 +5,43 @@ import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { scheduleDailyNotifications } from "@/lib/daily-notifications";
 import { SETTINGS_DEFAULTS } from "@/lib/use-settings";
 
-const HomePage          = lazy(() => import("@/pages/HomePage"));
-const PrayerTimesPage   = lazy(() => import("@/pages/PrayerTimesPage"));
-const QiblaFinderPage   = lazy(() => import("@/pages/QiblaFinderPage"));
-const QuranPage         = lazy(() => import("@/pages/QuranPage"));
-const SurahPage         = lazy(() => import("@/pages/SurahPage"));
-const HadithPage        = lazy(() => import("@/pages/HadithPage"));
-const BookmarksPage     = lazy(() => import("@/pages/BookmarksPage"));
-const AsmaulHusnaPage   = lazy(() => import("@/pages/AsmaulHusnaPage"));
-const TafseerPage       = lazy(() => import("@/pages/TafseerPage"));
-const TafseerSurahPage  = lazy(() => import("@/pages/TafseerSurahPage"));
-const SettingsPage      = lazy(() => import("@/pages/SettingsPage"));
-const AboutPage         = lazy(() => import("@/pages/AboutPage"));
-const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
-const TermsOfUsePage    = lazy(() => import("@/pages/TermsOfUsePage"));
+// ── Eager preload ──────────────────────────────────────────────────────────────
+// Start fetching every route chunk the instant the main bundle executes —
+// long before the user can read the home screen and tap a nav item.
+// The browser resolves these promises from its module cache, so by the time
+// React.lazy() is called the first time, the import is already settled.
+// This eliminates Suspense suspension on first navigation and the associated
+// Framer-Motion / React-18 concurrent-mode timing edge-cases that caused the
+// blank-page-on-first-click bug.
+const _home          = import("@/pages/HomePage");
+const _prayer        = import("@/pages/PrayerTimesPage");
+const _qibla         = import("@/pages/QiblaFinderPage");
+const _quran         = import("@/pages/QuranPage");
+const _surah         = import("@/pages/SurahPage");
+const _hadith        = import("@/pages/HadithPage");
+const _bookmarks     = import("@/pages/BookmarksPage");
+const _asmaul        = import("@/pages/AsmaulHusnaPage");
+const _tafseer       = import("@/pages/TafseerPage");
+const _tafseerSurah  = import("@/pages/TafseerSurahPage");
+const _settings      = import("@/pages/SettingsPage");
+const _about         = import("@/pages/AboutPage");
+const _privacy       = import("@/pages/PrivacyPolicyPage");
+const _terms         = import("@/pages/TermsOfUsePage");
+
+const HomePage          = lazy(() => _home);
+const PrayerTimesPage   = lazy(() => _prayer);
+const QiblaFinderPage   = lazy(() => _qibla);
+const QuranPage         = lazy(() => _quran);
+const SurahPage         = lazy(() => _surah);
+const HadithPage        = lazy(() => _hadith);
+const BookmarksPage     = lazy(() => _bookmarks);
+const AsmaulHusnaPage   = lazy(() => _asmaul);
+const TafseerPage       = lazy(() => _tafseer);
+const TafseerSurahPage  = lazy(() => _tafseerSurah);
+const SettingsPage      = lazy(() => _settings);
+const AboutPage         = lazy(() => _about);
+const PrivacyPolicyPage = lazy(() => _privacy);
+const TermsOfUsePage    = lazy(() => _terms);
 
 function PageLoader() {
   return (
