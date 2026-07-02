@@ -6,25 +6,23 @@ description: Why first-navigation blank-page happened and how it was fixed in Ra
 # Lazy preload — first-navigation blank-page
 
 ## The rule
-Never use `React.lazy(() => import(...))` alone in apps that use Framer Motion `AnimatePresence` with keyed `motion.div` transitions AND React 18 concurrent mode. Start the `import()` promises at module-load time and pass them into `lazy()`.
+Do NOT use `AnimatePresence` with `initial={false}` on a page-level route wrapper in React 19 + Framer Motion 12. This combination causes entering children (on navigation) to skip their animation but stay at their `initial` state (`opacity: 0`) rather than the `animate` state — blank page on first navigation.
 
-## Why
-When `React.lazy()` wraps a raw `import()` call, the bundle download only starts the first time that component is rendered. On first navigation:
-1. The new `motion.div` (key = new location) mounts at `initial={{ opacity: 0 }}`
-2. Its children suspend (bundle not yet downloaded)
-3. React 18 concurrent mode's Suspense processing disrupts Framer Motion's enter-animation effect scheduling
-4. The animation never fires → `motion.div` stays at `opacity: 0` → blank page
+## Why (confirmed root cause)
+`<AnimatePresence initial={false}>` with keyed `motion.div` children and React 19:
+1. Old motion.div exits (fades out) — both old AND new divs render the new route (Switch reads context)
+2. New motion.div mounts at `initial={{ opacity: 0, y: 6 }}`
+3. Due to React 19 + Framer Motion 12 interaction, `initial={false}` on AnimatePresence propagates to entering children, causing the enter animation to NOT fire
+4. New motion.div stays at `opacity: 0` → blank content; old one finishes fading out → fully blank
+5. Only exits (not enters) animate correctly
 
-Second navigation works because the bundle is cached and resolves synchronously — no Suspense, animation fires normally.
+**Two red herrings that did NOT fix it:**
+- Removing `mode="wait"` → still blank (both divs show new route, new one stays invisible)
+- Eagerly preloading all `React.lazy` imports → correct but not the root cause
 
-## How to apply
-In `App.tsx`, store all `import()` results as module-level constants, then pass those promises to `React.lazy()`:
+## Fix
+Remove `AnimatePresence` and `motion.div` from the page wrapper in `AppShell.tsx` entirely. Use a plain `div`. Individual page components have their own enter animations (card stagger, etc.).
 
-```tsx
-const _prayer = import("@/pages/PrayerTimesPage");
-const PrayerTimesPage = lazy(() => _prayer);
-```
+Also keep the eager preload pattern in `App.tsx` (all `import()` calls at module level, passed to `lazy()`) — this is still good practice to avoid Suspense suspension on first navigation.
 
-This starts all bundle downloads the instant the main JS executes — before any user interaction — so `lazy()` always resolves from cache.
-
-**Why:** Removing `AnimatePresence mode="wait"` alone did NOT fix the bug. The real issue is the timing between Suspense suspension and Framer Motion's useEffect-based animation trigger in React 18.
+**Why:** Without `AnimatePresence`, there is no dual-render issue, no `initial={false}` propagation, no opacity:0 stuck state.
