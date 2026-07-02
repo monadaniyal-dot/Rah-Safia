@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookMarked, ChevronDown, ChevronUp, Loader2, AlertCircle, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,22 +30,25 @@ export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpe
   const [sourceId, setSourceId] = useState(resolvedDefault);
   const [result, setResult] = useState<TafseerResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [cache, setCache] = useState<Record<string, TafseerResult>>({});
+
+  // Use a ref for the per-panel cache so mutations never trigger re-renders
+  // and load() never becomes stale due to cache dependency changes.
+  const cacheRef = useRef<Record<string, TafseerResult>>({});
 
   const load = useCallback(
     async (sid: string) => {
-      if (cache[sid]) {
-        setResult(cache[sid]);
+      if (cacheRef.current[sid]) {
+        setResult(cacheRef.current[sid]);
         return;
       }
       setLoading(true);
       setResult(null);
       const res = await fetchTafseer(surahNum, ayahNum, sid);
-      setCache((prev) => ({ ...prev, [sid]: res }));
+      cacheRef.current[sid] = res;
       setResult(res);
       setLoading(false);
     },
-    [surahNum, ayahNum, cache]
+    [surahNum, ayahNum]
   );
 
   // Auto-load when autoOpen is true
@@ -182,7 +185,7 @@ export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpe
                           : "text-sm leading-relaxed"
                       )}
                       dir={result.source.lang === "arabic" ? "rtl" : "ltr"}
-                      dangerouslySetInnerHTML={{ __html: sanitize(result.text) }}
+                      dangerouslySetInnerHTML={{ __html: sanitize(result.text ?? "") }}
                     />
 
                     {/* Attribution */}
@@ -232,7 +235,7 @@ export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpe
                       <p className="text-xs text-muted-foreground mt-0.5">{result.message}</p>
                       <button
                         onClick={() => {
-                          setCache((prev) => { const n = { ...prev }; delete n[sourceId]; return n; });
+                          delete cacheRef.current[sourceId];
                           load(sourceId);
                         }}
                         className="flex items-center gap-1 text-xs text-primary hover:underline mt-2"

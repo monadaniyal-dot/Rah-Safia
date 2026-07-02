@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Router, Route, Switch } from "wouter";
 import AppShell from "@/components/layout/AppShell";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { scheduleDailyNotifications } from "@/lib/daily-notifications";
 import { SETTINGS_DEFAULTS } from "@/lib/use-settings";
 
@@ -41,24 +42,26 @@ export default function App() {
   return (
     <Router base={base}>
       <AppShell>
-        <Suspense fallback={<PageLoader />}>
-          <Switch>
-            <Route path="/"                  component={HomePage} />
-            <Route path="/prayer"            component={PrayerTimesPage} />
-            <Route path="/qibla"             component={QiblaFinderPage} />
-            <Route path="/quran/:number"     component={SurahPage} />
-            <Route path="/quran"             component={QuranPage} />
-            <Route path="/hadith"            component={HadithPage} />
-            <Route path="/bookmarks"         component={BookmarksPage} />
-            <Route path="/asmaul-husna"      component={AsmaulHusnaPage} />
-            <Route path="/tafseer/surah/:number" component={TafseerSurahPage} />
-            <Route path="/tafseer"           component={TafseerPage} />
-            <Route path="/settings"          component={SettingsPage} />
-            <Route path="/about"             component={AboutPage} />
-            <Route path="/privacy"           component={PrivacyPolicyPage} />
-            <Route path="/terms"             component={TermsOfUsePage} />
-          </Switch>
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Switch>
+              <Route path="/"                      component={HomePage} />
+              <Route path="/prayer"                component={PrayerTimesPage} />
+              <Route path="/qibla"                 component={QiblaFinderPage} />
+              <Route path="/quran/:number"         component={SurahPage} />
+              <Route path="/quran"                 component={QuranPage} />
+              <Route path="/hadith"                component={HadithPage} />
+              <Route path="/bookmarks"             component={BookmarksPage} />
+              <Route path="/asmaul-husna"          component={AsmaulHusnaPage} />
+              <Route path="/tafseer/surah/:number" component={TafseerSurahPage} />
+              <Route path="/tafseer"               component={TafseerPage} />
+              <Route path="/settings"              component={SettingsPage} />
+              <Route path="/about"                 component={AboutPage} />
+              <Route path="/privacy"               component={PrivacyPolicyPage} />
+              <Route path="/terms"                 component={TermsOfUsePage} />
+            </Switch>
+          </Suspense>
+        </ErrorBoundary>
       </AppShell>
     </Router>
   );
