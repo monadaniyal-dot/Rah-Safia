@@ -191,6 +191,12 @@ function parseNarrator(text: string): { narrator: string; body: string } {
 const cache = new Map<CollectionId, HadithEntry[]>();
 const inflight = new Map<CollectionId, Promise<HadithEntry[]>>();
 
+/** Clears the in-memory hadith cache so the next fetch re-downloads from CDN. */
+export function clearHadithCache(): void {
+  cache.clear();
+  inflight.clear();
+}
+
 const CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions";
 
 export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> {

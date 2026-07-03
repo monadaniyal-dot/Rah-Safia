@@ -55,6 +55,7 @@ import {
   forwardGeocodeCity,
   type SavedLocation,
 } from "@/lib/location-store";
+import { clearHadithCache } from "@/lib/hadith-api";
 
 const APP_VERSION = "1.0.0";
 
@@ -783,7 +784,7 @@ export default function SettingsPage() {
   [handleClear]);
 
   const handleRefreshHadith = useCallback(() =>
-    handleClear("hadith", () => window.location.reload()),
+    handleClear("hadith", () => clearHadithCache()),
   [handleClear]);
 
   const handleRefreshTafseer = useCallback(() =>
