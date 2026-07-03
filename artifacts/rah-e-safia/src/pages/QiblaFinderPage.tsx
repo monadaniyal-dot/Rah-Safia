@@ -434,8 +434,8 @@ export default function QiblaFinderPage() {
           <div>
             <p className="text-sm font-medium text-foreground">How to use</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Allow location access above, then hold your device flat and align the green arrow (🕋)
-              with your surroundings. Face the direction the green needle points — that is the Qibla.
+              Allow location access above. The green arrow (🕋) will point toward the Qibla from
+              your current location — simply face that direction to face the Kaaba.
             </p>
           </div>
         </motion.div>
