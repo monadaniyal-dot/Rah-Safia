@@ -872,9 +872,10 @@ export default function SettingsPage() {
             icon={AlignJustify}
             label="Compact Mode"
             description="Reduce spacing for more content on screen"
-            dim
           >
-            <Toggle value={settings.compactMode} onChange={() => {}} disabled />
+            <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-border">
+              Coming soon
+            </span>
           </SettingRow>
         </SectionCard>
 
