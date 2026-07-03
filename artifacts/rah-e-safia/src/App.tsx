@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import NotFoundPage from "@/pages/NotFoundPage";
 import { Router, Route, Switch } from "wouter";
 import AppShell from "@/components/layout/AppShell";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -82,6 +83,7 @@ export default function App() {
               <Route path="/about"                 component={AboutPage} />
               <Route path="/privacy"               component={PrivacyPolicyPage} />
               <Route path="/terms"                 component={TermsOfUsePage} />
+              <Route                               component={NotFoundPage} />
             </Switch>
           </Suspense>
         </ErrorBoundary>
