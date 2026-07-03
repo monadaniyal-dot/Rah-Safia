@@ -302,6 +302,7 @@ export default function TafseerPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" strokeWidth={1.8} />
                     <input
                       type="search"
+                      aria-label="Search surah by name or number"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search Surah by name or number…"

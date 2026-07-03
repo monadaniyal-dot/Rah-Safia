@@ -311,6 +311,7 @@ export default function HadithPage() {
               />
               <input
                 type="search"
+                aria-label={`Search ${collectionMeta.label}`}
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setDisplayCount(PAGE_SIZE); }}
                 placeholder={`Search ${collectionMeta.label}…`}

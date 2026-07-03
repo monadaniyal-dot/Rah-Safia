@@ -164,6 +164,7 @@ export default function AsmaulHusnaPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
+            aria-label="Search names of Allah by name, meaning, or number"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, meaning, or number…"

@@ -552,6 +552,7 @@ export default function PrayerTimesPage() {
               <div className="flex gap-2">
                 <input
                   type="text"
+                  aria-label="City name for prayer times"
                   value={cityInput}
                   onChange={(e) => { setCityInput(e.target.value); setCityError(""); }}
                   onKeyDown={(e) => e.key === "Enter" && handleCitySearch()}
