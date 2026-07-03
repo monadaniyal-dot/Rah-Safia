@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  Clock, Sun, Sunrise, Sunset, Moon, Star,
+  Clock, Sun, CloudSun, Sunset, Moon, Star,
   LocateFixed, Loader2, AlertCircle, MapPin, RefreshCw, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ type PageState =
 const PRAYER_META = [
   { id: "Fajr",    name: "Fajr",    arabicName: "الفجر",  icon: Star,    period: "dawn"      },
   { id: "Dhuhr",   name: "Dhuhr",   arabicName: "الظهر",  icon: Sun,     period: "midday"    },
-  { id: "Asr",     name: "Asr",     arabicName: "العصر",  icon: Sunrise, period: "afternoon" },
+  { id: "Asr",     name: "Asr",     arabicName: "العصر",  icon: CloudSun, period: "afternoon" },
   { id: "Maghrib", name: "Maghrib", arabicName: "المغرب", icon: Sunset,  period: "evening"   },
   { id: "Isha",    name: "Isha",    arabicName: "العشاء", icon: Moon,    period: "night"     },
 ] as const;
