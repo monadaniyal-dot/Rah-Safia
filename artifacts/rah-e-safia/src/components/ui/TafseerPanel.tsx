@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookMarked, ChevronDown, ChevronUp, Loader2, AlertCircle, Clock, RefreshCw } from "lucide-react";
+import DOMPurify from "dompurify";
 import { cn } from "@/lib/utils";
 import {
   TAFSEER_SOURCES,
@@ -17,11 +18,17 @@ interface TafseerPanelProps {
   autoOpen?: boolean;
 }
 
-/** Strip any <script>/<style> tags from quran.com HTML for safety */
+/**
+ * Sanitize HTML from the Tafseer API using DOMPurify.
+ *
+ * DOMPurify's html profile blocks all event-handler attributes (onerror,
+ * onclick, onload, …), javascript: / data: URLs, <script>, <style>, SVG/math
+ * injection vectors, and every other known XSS class by default.
+ * Legitimate Tafseer formatting tags (<p>, <b>, <i>, <br>, <span>, …) are
+ * preserved so the rendered prose looks correct.
+ */
 function sanitize(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
 }
 
 export default function TafseerPanel({ surahNum, ayahNum, defaultSource, autoOpen = false }: TafseerPanelProps) {
