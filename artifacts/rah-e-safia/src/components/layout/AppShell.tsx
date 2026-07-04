@@ -18,13 +18,7 @@ function AppShellInner({ children }: AppShellProps) {
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-h-screen min-w-0">
-        <div
-          className={
-            playerActive
-              ? "flex-1 pb-[176px] lg:pb-[76px] overflow-y-auto"
-              : "flex-1 pb-20 lg:pb-0 overflow-y-auto"
-          }
-        >
+        <div className={playerActive ? "flex-1 pb-[176px] lg:pb-[76px]" : "flex-1 pb-20 lg:pb-0"}>
           <div className="min-h-full">
             {children}
           </div>
