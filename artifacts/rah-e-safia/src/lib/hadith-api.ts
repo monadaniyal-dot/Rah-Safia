@@ -202,10 +202,16 @@ export function clearHadithCache(): void {
 const CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions";
 
 export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> {
-  if (cache.has(id)) return cache.get(id)!;
-  if (inflight.has(id)) return inflight.get(id)!;
+  const cached = cache.get(id);
+  if (cached !== undefined) return cached;
 
-  const meta = COLLECTIONS.find((c) => c.id === id)!;
+  const pending = inflight.get(id);
+  if (pending !== undefined) return pending;
+
+  const meta = COLLECTIONS.find((c) => c.id === id);
+  if (!meta) {
+    throw new Error(`Unknown hadith collection: "${id}"`);
+  }
 
   const promise = (async () => {
     const [engRes, araRes] = await Promise.all([
