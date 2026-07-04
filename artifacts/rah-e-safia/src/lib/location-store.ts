@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 const LOCATION_KEY = "rah-e-safia:saved-location";
 
 export interface SavedLocation {
@@ -28,7 +30,7 @@ export function clearSavedLocation(): void {
 }
 
 export async function forwardGeocodeCity(query: string): Promise<SavedLocation> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
     { headers: { "Accept-Language": "en" } }
   );

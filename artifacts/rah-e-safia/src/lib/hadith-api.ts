@@ -2,6 +2,8 @@
 // Source: fawazahmed0/hadith-api (GitHub → jsDelivr CDN)
 // No authentication required. Pinned to the @1 release tag.
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 export type CollectionId =
   | "bukhari"
   | "muslim"
@@ -207,8 +209,8 @@ export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> 
 
   const promise = (async () => {
     const [engRes, araRes] = await Promise.all([
-      fetch(`${CDN}/${meta.editionEng}.min.json`),
-      fetch(`${CDN}/${meta.editionAra}.min.json`),
+      fetchWithTimeout(`${CDN}/${meta.editionEng}.min.json`),
+      fetchWithTimeout(`${CDN}/${meta.editionAra}.min.json`),
     ]);
 
     if (!engRes.ok) {

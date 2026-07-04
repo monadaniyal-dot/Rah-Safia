@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { motion } from "framer-motion";
 import {
   Clock, Sun, CloudSun, Sunset, Moon, Star,
@@ -129,7 +130,7 @@ function fmtCoord(n: number, pos: string, neg: string) {
 
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
       { headers: { "Accept-Language": "en" } }
     );
@@ -146,7 +147,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
 }
 
 async function forwardGeocode(query: string): Promise<LocationInfo> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
     { headers: { "Accept-Language": "en" } }
   );
@@ -174,7 +175,7 @@ async function fetchPrayerTimes(
     `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}` +
     `?latitude=${location.lat}&longitude=${location.lon}&method=${method}&school=${school}`;
 
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`Aladhan API error ${res.status}`);
   const json = await res.json();
   if (json.code !== 200) throw new Error(json.status ?? "API error");

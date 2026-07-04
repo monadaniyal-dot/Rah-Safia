@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 const BASE_URL = "https://api.alquran.cloud/v1";
 
 export interface AyahWithTranslations {
@@ -78,7 +80,7 @@ export async function fetchSurah(
     ? `quran-uthmani,${edition},ur.jalandhry,en.transliteration`
     : `quran-uthmani,${edition},ur.jalandhry`;
 
-  const promise = fetch(`${BASE_URL}/surah/${number}/editions/${editions}`)
+  const promise = fetchWithTimeout(`${BASE_URL}/surah/${number}/editions/${editions}`)
     .then(async (res) => {
       if (!res.ok) {
         throw new Error(`Network error ${res.status}: ${res.statusText}`);

@@ -8,6 +8,8 @@
 //  5. Adding a new source = one entry in TAFSEER_SOURCES. Nothing else changes.
 //  6. Text from quran.com is HTML (<p>, <h2>). The UI layer handles rendering.
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 export type TafseerStatus = "available" | "coming-soon";
 export type TafseerLang = "urdu" | "english" | "arabic";
 
@@ -197,7 +199,7 @@ export async function fetchTafseer(
   if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://api.quran.com/api/v4/tafsirs/${source.qurancomId}/by_ayah/${surahNum}:${ayahNum}?language=en`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
