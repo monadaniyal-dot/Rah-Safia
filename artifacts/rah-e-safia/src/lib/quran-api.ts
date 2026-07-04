@@ -39,15 +39,26 @@ function cacheKey(number: number, edition: string, transliteration: boolean): st
 function parseEditions(data: any[], transliteration: boolean): SurahData {
   const [arabic, english, urdu, translit] = data;
 
+  // Arabic is the structural foundation — ayah numbers, juz, page, and sajda
+  // all come from it. Both a missing edition and an empty ayahs array make the
+  // surah unrenderable, so surface a clear error in both cases rather than
+  // crashing later with a TypeError.
+  if (!arabic?.ayahs?.length) {
+    throw new Error("Arabic Quran text unavailable or empty in API response — cannot render surah.");
+  }
+
   const ayahs: AyahWithTranslations[] = arabic.ayahs.map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ayah: any, i: number) => ({
       number: ayah.number,
       numberInSurah: ayah.numberInSurah,
       arabic: ayah.text as string,
-      english: (english.ayahs[i]?.text as string) ?? "",
-      urdu: (urdu.ayahs[i]?.text as string) ?? "",
-      transliteration: transliteration ? ((translit?.ayahs[i]?.text as string) ?? undefined) : undefined,
+      // English, Urdu, and transliteration editions are optional — guard the
+      // edition object itself in addition to the individual ayah so a missing
+      // or malformed edition falls back gracefully rather than throwing.
+      english: (english?.ayahs?.[i]?.text as string) ?? "",
+      urdu: (urdu?.ayahs?.[i]?.text as string) ?? "",
+      transliteration: transliteration ? ((translit?.ayahs?.[i]?.text as string) ?? undefined) : undefined,
       juz: ayah.juz as number,
       page: ayah.page as number,
       sajda: ayah.sajda,
