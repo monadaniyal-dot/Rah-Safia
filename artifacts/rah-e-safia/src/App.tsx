@@ -65,8 +65,8 @@ export default function App() {
 
   return (
     <Router base={base}>
-      <AppShell>
-        <ErrorBoundary>
+      <ErrorBoundary>
+        <AppShell>
           <Suspense fallback={<PageLoader />}>
             <Switch>
               <Route path="/"                      component={HomePage} />
@@ -86,8 +86,8 @@ export default function App() {
               <Route                               component={NotFoundPage} />
             </Switch>
           </Suspense>
-        </ErrorBoundary>
-      </AppShell>
+        </AppShell>
+      </ErrorBoundary>
     </Router>
   );
 }
