@@ -6,3 +6,4 @@
 - [Location store](location-store.md) — Saved location in `rah-e-safia:saved-location` localStorage key; shared between PrayerTimesPage and QiblaFinderPage.
 - [Aladhan API params](aladhan-params.md) — method: MWL=1,ISNA=2,Egypt=3,Makkah=4,Karachi=5; school: shafi=0,hanafi=1.
 - [Player progress context split](player-progress-context.md) — currentTime/duration live in PlayerProgressContext; usePlayerProgress() is for MiniPlayer/FullPlayer only. Main QuranPlayerContext never fires on timeupdate.
+- [Dev port-guard boot race](dev-port-guard-boot-race.md) — cold reboot can start duplicate workflow processes simultaneously; guard can't catch same-instant races. Kill by explicit PID, restart workflows one at a time.
