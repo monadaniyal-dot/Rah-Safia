@@ -230,10 +230,16 @@ export async function fetchCollection(id: CollectionId): Promise<HadithEntry[]> 
         : Promise.resolve({ hadiths: [] }),
     ]);
 
+    // Accept only entries whose text actually contains Arabic script (U+0600–U+06FF).
+    // This guards against the CDN occasionally serving the English file under the
+    // Arabic URL — if that happens, araMap stays empty and arabicText falls back to
+    // "" (Arabic block hidden) rather than showing the English translation twice.
+    const ARABIC_RE = /[\u0600-\u06FF]/;
     const araMap = new Map<number, string>();
     for (const h of araData.hadiths ?? []) {
-      if (h.text && typeof h.hadithnumber === "number") {
-        araMap.set(h.hadithnumber as number, h.text as string);
+      const txt = h.text as string | undefined;
+      if (txt && typeof h.hadithnumber === "number" && ARABIC_RE.test(txt)) {
+        araMap.set(h.hadithnumber as number, txt);
       }
     }
 
