@@ -39,6 +39,7 @@ export default defineConfig({
   },
   server: {
     port,
+    strictPort: true, // Exit instead of falling back to another port — prevents stealing a sibling service's port on boot.
     host: "0.0.0.0",
     allowedHosts: true,
     // Vite serves index.html for all unmatched routes by default (appType: 'spa'),
@@ -46,6 +47,7 @@ export default defineConfig({
   },
   preview: {
     port,
+    strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
   },
