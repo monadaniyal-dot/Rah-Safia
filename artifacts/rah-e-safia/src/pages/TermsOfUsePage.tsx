@@ -112,7 +112,7 @@ export default function TermsOfUsePage() {
               <p className="font-arabic text-amber-200/80 text-sm mb-1" dir="rtl">شروط الاستخدام</p>
               <h2 className="text-white font-bold text-lg leading-snug">Terms of Use</h2>
               <p className="text-white/60 text-xs mt-1.5 leading-relaxed max-w-sm">
-                By using Rah-e-Safia, you agree to these terms. Please read them carefully before using the application.
+                By using Quran Al-Falah, you agree to these terms. Please read them carefully before using the application.
               </p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function TermsOfUsePage() {
 
         <Section icon={Info} title="Introduction" index={0}>
           <p>
-            Welcome to <strong>Rah-e-Safia (راہِ صافیہ)</strong> — a free Islamic companion application dedicated to the loving memory of Safia Bano, as a source of Sadaqah Jariyah.
+            Welcome to <strong>Quran Al-Falah</strong> — a free Islamic companion application dedicated to the loving memory of Safia Bano, as a source of Sadaqah Jariyah.
           </p>
           <p>
             By accessing or using this application, you agree to be bound by these Terms of Use. If you do not agree with any part of these terms, please discontinue use of the app.
@@ -131,17 +131,17 @@ export default function TermsOfUsePage() {
 
         <Section icon={BookOpen} title="Educational & Religious Disclaimer" index={1}>
           <Highlight>
-            Rah-e-Safia provides Islamic content for <strong>educational and personal reference purposes only</strong>. Nothing in this app constitutes a formal religious ruling (fatwa), legal opinion, or scholarly endorsement.
+            Quran Al-Falah provides Islamic content for <strong>educational and personal reference purposes only</strong>. Nothing in this app constitutes a formal religious ruling (fatwa), legal opinion, or scholarly endorsement.
           </Highlight>
           <Bullet>Qur'an text, translations, and transliterations are sourced from established open APIs and presented as-is for reading and reflection.</Bullet>
           <Bullet>Hadith narrations are from authenticated collections (Bukhari, Muslim, etc.) but may carry varying chains of narration; verify with qualified scholars for matters of practice.</Bullet>
-          <Bullet>Tafseer (commentary) represents the views of the respective scholars and authors, not of Rah-e-Safia.</Bullet>
+          <Bullet>Tafseer (commentary) represents the views of the respective scholars and authors, not of Quran Al-Falah.</Bullet>
           <Bullet>Prayer times are algorithmically calculated based on astronomical data. For official prayer times in your area, please verify with your local mosque.</Bullet>
           <Bullet>The Qibla direction is an approximation. For precise direction, use a dedicated compass device or consult local religious authorities.</Bullet>
         </Section>
 
         <Section icon={User} title="User Responsibilities" index={2}>
-          <p>As a user of Rah-e-Safia, you agree to:</p>
+          <p>As a user of Quran Al-Falah, you agree to:</p>
           <Bullet>Use the app in a manner consistent with Islamic ethics and respect for sacred texts.</Bullet>
           <Bullet>Not use automated tools, bots, or scripts to scrape, crawl, or mass-download content from the app or the third-party APIs it relies on.</Bullet>
           <Bullet>Not attempt to reverse-engineer, decompile, or tamper with the app's source code for commercial purposes.</Bullet>
@@ -151,7 +151,7 @@ export default function TermsOfUsePage() {
 
         <Section icon={Globe} title="Third-Party Content & APIs" index={3}>
           <p>
-            Rah-e-Safia displays content sourced from external providers. We make every effort to use trusted, authenticated sources, but we cannot guarantee the absolute accuracy, completeness, or currency of this content.
+            Quran Al-Falah displays content sourced from external providers. We make every effort to use trusted, authenticated sources, but we cannot guarantee the absolute accuracy, completeness, or currency of this content.
           </p>
           <Bullet><strong>Qur'an text</strong> — sourced via AlQuran.cloud API under open licence.</Bullet>
           <Bullet><strong>Hadith collections</strong> — sourced via HadithAPI.com / jsDelivr CDN; authenticated collections with standard chain classifications.</Bullet>
@@ -165,19 +165,19 @@ export default function TermsOfUsePage() {
 
         <Section icon={Shield} title="Intellectual Property" index={4}>
           <p>
-            The <strong>app design, layout, codebase, and original written content</strong> of Rah-e-Safia are the intellectual property of its developers.
+            The <strong>app design, layout, codebase, and original written content</strong> of Quran Al-Falah are the intellectual property of its developers.
           </p>
           <Bullet>The Qur'anic text is the word of Allah (ﷻ) and is not owned by any individual or organisation.</Bullet>
           <Bullet>Hadith collections are classical Islamic scholarship and are reproduced here under open-access licences.</Bullet>
           <Bullet>Tafseer texts are attributed to their respective scholars; reproduction outside this app may require permission from the original publishers.</Bullet>
-          <Bullet>The name <strong>Rah-e-Safia</strong>, its logo, and branding are proprietary to the app's developers.</Bullet>
+          <Bullet>The name <strong>Quran Al-Falah</strong>, its logo, and branding are proprietary to the app's developers.</Bullet>
         </Section>
 
         <Section icon={AlertTriangle} title="Limitation of Liability" index={5}>
           <Highlight>
-            Rah-e-Safia is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, express or implied.
+            Quran Al-Falah is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, express or implied.
           </Highlight>
-          <p>To the fullest extent permitted by law, Rah-e-Safia and its developers shall not be liable for:</p>
+          <p>To the fullest extent permitted by law, Quran Al-Falah and its developers shall not be liable for:</p>
           <Bullet>Any inaccuracies in Qur'anic text, translations, Hadith, Tafseer, or prayer times.</Bullet>
           <Bullet>Any spiritual, religious, legal, or personal decisions made based on content viewed in the app.</Bullet>
           <Bullet>Any loss of data due to browser cache clearing, device reset, or application updates.</Bullet>
@@ -187,7 +187,7 @@ export default function TermsOfUsePage() {
 
         <Section icon={Clock} title="Service Availability" index={6}>
           <p>
-            Rah-e-Safia depends on several third-party APIs for its core content. We do not guarantee uninterrupted availability of the app or any of its features. Scheduled maintenance, API rate limits, and network issues may temporarily affect functionality.
+            Quran Al-Falah depends on several third-party APIs for its core content. We do not guarantee uninterrupted availability of the app or any of its features. Scheduled maintenance, API rate limits, and network issues may temporarily affect functionality.
           </p>
           <p>
             We will endeavour to keep the app updated and functioning but are under no obligation to maintain any particular feature indefinitely.
@@ -199,7 +199,7 @@ export default function TermsOfUsePage() {
             These Terms of Use may be updated at any time to reflect changes in the app's functionality, applicable law, or our policies. Changes will be noted by a new "Last updated" date at the top of this page.
           </p>
           <p>
-            <strong>Continued use of Rah-e-Safia after any changes to these terms constitutes your acceptance of the updated terms.</strong> If you disagree with any update, you should discontinue use of the app.
+            <strong>Continued use of Quran Al-Falah after any changes to these terms constitutes your acceptance of the updated terms.</strong> If you disagree with any update, you should discontinue use of the app.
           </p>
           <p>
             New features or modules added to the app in the future will automatically be governed by the then-current Terms of Use.
@@ -232,7 +232,7 @@ export default function TermsOfUsePage() {
             <span className="font-medium text-foreground">Safia Bano</span>
           </p>
           <p className="text-[10px] text-muted-foreground/50">
-            Rah-e-Safia v1.0.0 · Sadaqah Jariyah
+            Quran Al-Falah v1.0.0 · Sadaqah Jariyah
           </p>
         </motion.div>
 
