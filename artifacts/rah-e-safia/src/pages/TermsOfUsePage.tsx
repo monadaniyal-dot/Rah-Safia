@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 const LAST_UPDATED = "1 July 2026";
-const CONTACT_EMAIL = "contact@rah-e-safia.app";
+const CONTACT_EMAIL = "contact@quran-al-falah.app";
 
 // ─── Section card ──────────────────────────────────────────────────────────────
 

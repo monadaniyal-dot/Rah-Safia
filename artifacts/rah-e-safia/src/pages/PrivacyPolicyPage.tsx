@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 const LAST_UPDATED = "1 July 2026";
-const CONTACT_EMAIL = "contact@rah-e-safia.app";
+const CONTACT_EMAIL = "contact@quran-al-falah.app";
 
 // ─── Section card ──────────────────────────────────────────────────────────────
 
@@ -114,7 +114,7 @@ export default function PrivacyPolicyPage() {
               <p className="font-arabic text-amber-200/80 text-sm mb-1" dir="rtl">سياسة الخصوصية</p>
               <h2 className="text-white font-bold text-lg leading-snug">Your Privacy Comes First</h2>
               <p className="text-white/60 text-xs mt-1.5 leading-relaxed max-w-sm">
-                Rah-e-Safia is designed to respect your privacy. We do not operate servers that collect or store your personal data.
+                Quran Al-Falah is designed to respect your privacy. We do not operate servers that collect or store your personal data.
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ export default function PrivacyPolicyPage() {
 
         <Section icon={Eye} title="Overview — What We Collect" index={0}>
           <p>
-            Rah-e-Safia operates primarily on your device. <strong>We do not run servers that collect, store, or process your personal information.</strong> The app stores data only in your browser's local storage, which remains on your device at all times.
+            Quran Al-Falah operates primarily on your device. <strong>We do not run servers that collect, store, or process your personal information.</strong> The app stores data only in your browser's local storage, which remains on your device at all times.
           </p>
           <p>
             There are no user accounts, no sign-ups, and no cloud sync. Everything you save — bookmarks, reading progress, settings — stays on your device.
@@ -136,7 +136,7 @@ export default function PrivacyPolicyPage() {
             Location access is requested <strong>only</strong> for two features: Prayer Times and Qibla Finder.
           </p>
           <Bullet>Your coordinates are used in real time to query the Aladhan prayer times API and to calculate the Qibla direction.</Bullet>
-          <Bullet>We do not store, log, or share your location. It is never transmitted to Rah-e-Safia servers (which do not exist).</Bullet>
+          <Bullet>We do not store, log, or share your location. It is never transmitted to Quran Al-Falah servers (which do not exist).</Bullet>
           <Bullet>If you choose to save a city manually, only the city name and coordinates are stored in your browser's local storage — never uploaded anywhere.</Bullet>
           <Bullet>You may deny location access at any time. Prayer times and Qibla will prompt you to enter a city name manually as a fallback.</Bullet>
         </Section>
@@ -152,7 +152,7 @@ export default function PrivacyPolicyPage() {
 
         <Section icon={Server} title="External API Usage" index={3}>
           <p>
-            Rah-e-Safia connects to the following third-party APIs to provide Islamic content. These requests are made directly from your browser. Please refer to each provider's privacy policy for their data practices.
+            Quran Al-Falah connects to the following third-party APIs to provide Islamic content. These requests are made directly from your browser. Please refer to each provider's privacy policy for their data practices.
           </p>
           <div className="space-y-2.5 mt-1">
             <ApiRow
@@ -207,7 +207,7 @@ export default function PrivacyPolicyPage() {
 
         <Section icon={BarChart2} title="Analytics & Tracking" index={5}>
           <p>
-            <strong>Rah-e-Safia contains no analytics, tracking, advertising, or third-party scripts</strong> of any kind. We do not use:
+            <strong>Quran Al-Falah contains no analytics, tracking, advertising, or third-party scripts</strong> of any kind. We do not use:
           </p>
           <Bullet>Google Analytics or any analytics platform</Bullet>
           <Bullet>Cookies (session or persistent)</Bullet>
@@ -218,7 +218,7 @@ export default function PrivacyPolicyPage() {
 
         <Section icon={Shield} title="Children's Privacy" index={6}>
           <p>
-            Rah-e-Safia does not knowingly collect any personal information from anyone, including children under the age of 13. Because we collect no personal data, this app is safe for use by all ages.
+            Quran Al-Falah does not knowingly collect any personal information from anyone, including children under the age of 13. Because we collect no personal data, this app is safe for use by all ages.
           </p>
         </Section>
 
@@ -264,7 +264,7 @@ export default function PrivacyPolicyPage() {
             <span className="font-medium text-foreground">Safia Bano</span>
           </p>
           <p className="text-[10px] text-muted-foreground/50">
-            Rah-e-Safia v1.0.0 · Sadaqah Jariyah
+            Quran Al-Falah v1.0.0 · Sadaqah Jariyah
           </p>
         </motion.div>
 

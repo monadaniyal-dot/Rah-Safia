@@ -1,4 +1,4 @@
-# Rah-e-Safia | راہِ صافیہ
+# Quran Al-Falah | قرآن الفلاح
 
 A modern Islamic companion web app dedicated to the loving memory of Safia Bano — a source of Sadaqah Jariyah.
 

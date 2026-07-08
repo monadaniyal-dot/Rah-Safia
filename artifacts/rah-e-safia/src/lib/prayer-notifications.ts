@@ -71,7 +71,7 @@ export function schedulePrayerNotifications(
 
     const t = setTimeout(() => {
       try {
-        new Notification(`🕌 ${prayer.name} — Rah-e-Safia`, {
+        new Notification(`🕌 ${prayer.name} — Quran Al-Falah`, {
           body,
           icon: "/favicon.ico",
           tag: `prayer-${prayer.id}`,

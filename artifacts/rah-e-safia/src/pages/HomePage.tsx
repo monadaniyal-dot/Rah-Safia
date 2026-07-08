@@ -146,9 +146,9 @@ export default function HomePage() {
             🌙
           </div>
           <div>
-            <h1 className="font-semibold text-foreground text-sm leading-tight">Rah-e-Safia</h1>
+            <h1 className="font-semibold text-foreground text-sm leading-tight">Quran Al-Falah</h1>
             <p className="font-arabic text-muted-foreground text-xs leading-tight" dir="rtl">
-              راہِ صافیہ
+              قرآن الفلاح
             </p>
           </div>
         </div>

@@ -691,7 +691,7 @@ export default function SettingsPage() {
       const body = enabled.length
         ? `Active reminders: ${enabled.join(", ")}. Scheduled for ${formatReminderTime(settings.reminderTime)}.`
         : "Your daily reminders are set up correctly.";
-      new Notification("✅ Rah-e-Safia — Test Notification", {
+      new Notification("✅ Quran Al-Falah — Test Notification", {
         body,
         icon: "/favicon.ico",
         tag: "rah-e-safia:test",
@@ -746,7 +746,7 @@ export default function SettingsPage() {
     if (navigator.share) {
       navigator
         .share({
-          title: "Rah-e-Safia — Your Islamic Companion",
+          title: "Quran Al-Falah — Your Islamic Companion",
           text: "A beautiful Islamic companion app with Quran, Hadith, Tafseer, Prayer Times, and more.",
           url: window.location.origin,
         })
@@ -1241,7 +1241,7 @@ export default function SettingsPage() {
                           Allow notifications
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                          Tap below to allow Rah-e-Safia to send you daily reminders.
+                          Tap below to allow Quran Al-Falah to send you daily reminders.
                         </p>
                       </div>
                       <button
@@ -1524,7 +1524,7 @@ export default function SettingsPage() {
         {/* ── About ── */}
         <SectionCard icon={Info} title="About" description="App information and links">
           <AboutRow icon={Tag} label="Version" value={APP_VERSION} />
-          <AboutRow icon={Info} label="Developer" value="Rah-e-Safia" />
+          <AboutRow icon={Info} label="Developer" value="Quran Al-Falah" />
 
           <div className="px-5 py-3.5 border-t border-border/50">
             <p className="text-xs font-medium text-muted-foreground mb-2">Data Sources</p>
@@ -1547,7 +1547,7 @@ export default function SettingsPage() {
           <div className="border-t border-border/50 divide-y divide-border/50">
             <AboutRow icon={Shield} label="Privacy Policy" onClick={handleNavigatePrivacy} />
             <AboutRow icon={Info} label="Terms & Conditions" onClick={handleNavigateTerms} />
-            <AboutRow icon={Mail} label="Contact Us" href="mailto:contact@rah-e-safia.app" />
+            <AboutRow icon={Mail} label="Contact Us" href="mailto:contact@quran-al-falah.app" />
             <AboutRow icon={Star} label="Rate the App" href="#" />
             <div
               className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/60 transition-colors duration-150 cursor-pointer"
@@ -1577,7 +1577,7 @@ export default function SettingsPage() {
             <span className="font-medium text-foreground">Safia Bano</span>
           </p>
           <p className="text-[10px] text-muted-foreground/60">
-            Rah-e-Safia v{APP_VERSION} · Sadaqah Jariyah
+            Quran Al-Falah v{APP_VERSION} · Sadaqah Jariyah
           </p>
         </motion.div>
 

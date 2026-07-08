@@ -298,7 +298,7 @@ const DuaCard = memo(function DuaCard({ dua }: { dua: DailyDua }) {
   const bookmarked = isDuaBookmarked(dua.id);
 
   const getText = useCallback(
-    () => `${dua.arabic}\n\n${dua.transliteration}\n\n"${dua.english}"\n\n— ${dua.source}\n\nShared from Rah-e-Safia · راہِ صافیہ`,
+    () => `${dua.arabic}\n\n${dua.transliteration}\n\n"${dua.english}"\n\n— ${dua.source}\n\nShared from Quran Al-Falah · قرآن الفلاح`,
     [dua]
   );
 
@@ -476,11 +476,11 @@ export default function DailyInspiration() {
   // Stable text getters for the action bars — useCallback so useActions' share/copy
   // are created once and don't force ActionBar re-renders through new references.
   const getAyahText = useCallback(
-    () => ayah ? `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Rah-e-Safia · راہِ صافیہ` : "",
+    () => ayah ? `${ayah.arabic}\n\n${ayah.urdu}\n\n"${ayah.english}"\n\n— Quran ${ayah.surah}:${ayah.ayah} (${ayah.surahName})\n\nShared from Quran Al-Falah · قرآن الفلاح` : "",
     [ayah]
   );
   const getHadithText = useCallback(
-    () => hadith ? `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Rah-e-Safia · راہِ صافیہ` : "",
+    () => hadith ? `${hadith.arabic}\n\n"${hadith.english}"\n\nNarrated by: ${hadith.narrator}\n— ${hadith.reference}\n\nShared from Quran Al-Falah · قرآن الفلاح` : "",
     [hadith]
   );
 

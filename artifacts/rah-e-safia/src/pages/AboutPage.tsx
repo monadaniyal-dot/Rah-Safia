@@ -142,7 +142,7 @@ export default function AboutPage() {
   function handleShare() {
     if (navigator.share) {
       navigator.share({
-        title: "Rah-e-Safia — Islamic Companion",
+        title: "Quran Al-Falah — Islamic Companion",
         text: "A beautiful Islamic companion app with Quran, Hadith, Prayer Times, and more.",
         url: window.location.origin,
       }).catch(() => {});
@@ -179,8 +179,8 @@ export default function AboutPage() {
             </span>
           </div>
 
-          <h1 className="text-2xl font-bold text-foreground mb-1">Rah-e-Safia</h1>
-          <p className="font-arabic text-lg text-primary mb-2" dir="rtl">راہِ صافیہ</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Quran Al-Falah</h1>
+          <p className="font-arabic text-lg text-primary mb-2" dir="rtl">قرآن الفلاح</p>
           <p className="text-sm text-muted-foreground mb-4">Your Daily Islamic Companion</p>
 
           {/* Version info chips */}
@@ -208,7 +208,7 @@ export default function AboutPage() {
                   <Heart className="w-4 h-4 text-white" strokeWidth={1.8} />
                 </div>
                 <p className="text-sm text-foreground/90 leading-relaxed">
-                  Rah-e-Safia is built to provide authentic Qur'an, Hadith, Tafseer, Prayer Times,
+                  Quran Al-Falah is built to provide authentic Qur'an, Hadith, Tafseer, Prayer Times,
                   Qibla direction, Audio Recitation, and daily Islamic guidance — all in one
                   elegant, free application. Our goal is to make your connection with Deen simple,
                   beautiful, and always within reach.
@@ -280,7 +280,7 @@ export default function AboutPage() {
               icon={ShieldCheck}
               label="Privacy Policy"
               sub="How we handle your data"
-              href="mailto:dev@rah-e-safia.app?subject=Privacy%20Policy%20Enquiry"
+              href="mailto:dev@quran-al-falah.app?subject=Privacy%20Policy%20Enquiry"
               iconClass="text-emerald-600"
               iconBg="bg-emerald-500/10"
               external
@@ -289,14 +289,14 @@ export default function AboutPage() {
               icon={FileText}
               label="Terms of Use"
               sub="Usage guidelines and conditions"
-              href="mailto:dev@rah-e-safia.app?subject=Terms%20of%20Use%20Enquiry"
+              href="mailto:dev@quran-al-falah.app?subject=Terms%20of%20Use%20Enquiry"
               iconClass="text-sky-600"
               iconBg="bg-sky-500/10"
               external
             />
           </div>
           <p className="text-[11px] text-muted-foreground/60 text-center mt-2 px-4">
-            Rah-e-Safia does not collect, store, or sell personal data. All preferences are saved locally on your device.
+            Quran Al-Falah does not collect, store, or sell personal data. All preferences are saved locally on your device.
           </p>
         </motion.div>
 
@@ -308,7 +308,7 @@ export default function AboutPage() {
               icon={Mail}
               label="Contact Developer"
               sub="Questions, feedback, or support"
-              href="mailto:dev@rah-e-safia.app?subject=Rah-e-Safia%20Contact"
+              href="mailto:dev@quran-al-falah.app?subject=Quran%20Al-Falah%20Contact"
               iconClass="text-primary"
               iconBg="bg-primary/10"
               external
@@ -317,7 +317,7 @@ export default function AboutPage() {
               icon={Bug}
               label="Report a Bug"
               sub="Help us improve the experience"
-              href="mailto:dev@rah-e-safia.app?subject=Bug%20Report%20—%20Rah-e-Safia"
+              href="mailto:dev@quran-al-falah.app?subject=Bug%20Report%20—%20Quran%20Al-Falah"
               iconClass="text-rose-600"
               iconBg="bg-rose-500/10"
               external
@@ -326,7 +326,7 @@ export default function AboutPage() {
               icon={Lightbulb}
               label="Suggest a Feature"
               sub="Share your ideas with us"
-              href="mailto:dev@rah-e-safia.app?subject=Feature%20Suggestion%20—%20Rah-e-Safia"
+              href="mailto:dev@quran-al-falah.app?subject=Feature%20Suggestion%20—%20Quran%20Al-Falah"
               iconClass="text-amber-600"
               iconBg="bg-amber-500/10"
               external
@@ -340,7 +340,7 @@ export default function AboutPage() {
           <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
             <ActionRow
               icon={Share2}
-              label="Share Rah-e-Safia"
+              label="Share Quran Al-Falah"
               sub="Invite family and friends to benefit"
               onClick={handleShare}
               iconClass="text-primary"
@@ -368,7 +368,7 @@ export default function AboutPage() {
             </p>
           </div>
           <p className="text-xs text-muted-foreground/50">
-            Rah-e-Safia v{APP_VERSION} · Build {BUILD_NUMBER}
+            Quran Al-Falah v{APP_VERSION} · Build {BUILD_NUMBER}
           </p>
           <p className="text-xs text-muted-foreground/40 mt-1">
             Made with <Heart className="inline w-3 h-3 text-gold fill-gold mx-0.5" /> for the Ummah

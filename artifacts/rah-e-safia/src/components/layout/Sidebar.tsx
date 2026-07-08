@@ -29,10 +29,10 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="font-semibold text-foreground text-base leading-tight">
-              Rah-e-Safia
+              Quran Al-Falah
             </h1>
             <p className="font-arabic text-muted-foreground text-sm leading-tight" dir="rtl">
-              راہِ صافیہ
+              قرآن الفلاح
             </p>
           </div>
         </div>

@@ -67,8 +67,8 @@ export function scheduleDailyNotifications(settings: DailyNotifSettings): void {
   if (settings.dailyReflectionNotification) {
     schedule(
       delay,
-      "📖 Daily Ayah — Rah-e-Safia",
-      "Your daily Quranic verse is ready. Open Rah-e-Safia for today's reflection.",
+      "📖 Daily Ayah — Quran Al-Falah",
+      "Your daily Quranic verse is ready. Open Quran Al-Falah for today's reflection.",
       "rah-e-safia:daily-ayah"
     );
   }
@@ -76,8 +76,8 @@ export function scheduleDailyNotifications(settings: DailyNotifSettings): void {
   if (settings.dailyDuaNotification) {
     schedule(
       delay,
-      "🤲 Daily Dua — Rah-e-Safia",
-      "A new supplication is ready for you. Open Rah-e-Safia to read today's Dua.",
+      "🤲 Daily Dua — Quran Al-Falah",
+      "A new supplication is ready for you. Open Quran Al-Falah to read today's Dua.",
       "rah-e-safia:daily-dua"
     );
   }
@@ -86,8 +86,8 @@ export function scheduleDailyNotifications(settings: DailyNotifSettings): void {
     // Reuses the Daily Reflection section — same deeplink target as Daily Ayah
     schedule(
       delay,
-      "✨ Daily Inspiration — Rah-e-Safia",
-      "Your daily Islamic reminder is waiting for you in Rah-e-Safia.",
+      "✨ Daily Inspiration — Quran Al-Falah",
+      "Your daily Islamic reminder is waiting for you in Quran Al-Falah.",
       "rah-e-safia:daily-inspiration"
     );
   }
