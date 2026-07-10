@@ -33,7 +33,7 @@ export interface AppSettings {
 }
 
 export const SETTINGS_DEFAULTS: AppSettings = {
-  arabicFontSize: 20,
+  arabicFontSize: 32,
   translationFontSize: 14,
   showTransliteration: false,
   rememberLastPosition: true,
