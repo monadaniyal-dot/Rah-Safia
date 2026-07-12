@@ -512,9 +512,16 @@ export default function DailyInspiration() {
       </div>
 
       {/* ── Ayah / Hadith hero card ── */}
+      {/* transform:translateZ(0) promotes this element to its own GPU compositor layer.
+          Without it, older Chromium (Chrome ≤93, e.g. Huawei P30 Pro EMUI WebView) cannot
+          squash the two nested Framer Motion layers (motion.section → motion.div) through
+          this non-composited overflow:hidden+border-radius container. The Arabic text-shadow
+          (24px blur) then gets an asynchronous software-paint that desyncs from scroll,
+          causing the visible jitter/drag. Promoting the card here flattens all children into
+          one layer so the compositor moves the whole card as a single unit during scroll. */}
       <div
         className="relative w-full overflow-hidden rounded-3xl shadow-2xl"
-        style={{ background: "linear-gradient(160deg, #1c4a31 0%, #0e2d1f 40%, #081a12 100%)" }}
+        style={{ background: "linear-gradient(160deg, #1c4a31 0%, #0e2d1f 40%, #081a12 100%)", transform: "translateZ(0)" }}
       >
         <div className="absolute inset-0 islamic-pattern opacity-30 pointer-events-none" aria-hidden="true" />
         <div
