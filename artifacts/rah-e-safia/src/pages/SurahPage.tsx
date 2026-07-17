@@ -12,6 +12,7 @@ import {
   BookMarked,
   Play,
   Pause,
+  TextSearch,
 } from "lucide-react";
 import { surahs } from "@/lib/quran-data";
 import { fetchSurah, isSajda, type AyahWithTranslations } from "@/lib/quran-api";
@@ -26,6 +27,8 @@ import {
   saveQuranProgress,
   getQuranProgress,
 } from "@/lib/reading-progress";
+import { useLongPress } from "@/hooks/useLongPress";
+import WordStudySheet, { type WordStudyTrigger } from "@/components/ui/WordStudySheet";
 
 function langToMode(lang: string): TranslationMode {
   switch (lang) {
@@ -66,6 +69,73 @@ function AyahSkeleton({ index }: { index: number }) {
   );
 }
 
+// ─── Arabic word helpers ──────────────────────────────────────────────────────
+
+/** True if the token contains at least one Arabic letter (not just punctuation / marks) */
+function isArabicWord(token: string): boolean {
+  return /[\u0621-\u064A\u066E\u066F\u0671-\u06D3\u06FA-\u06FF]/.test(token);
+}
+
+/**
+ * A single Arabic word token rendered inside an AyahCard.
+ * Uses useLongPress so the hook call is valid (not inside a conditional or .map callback).
+ */
+const WordToken = memo(function WordToken({
+  word,
+  index,
+  onLongPress,
+  interactive,
+}: {
+  word: string;
+  index: number;
+  onLongPress: (word: string, index: number) => void;
+  interactive: boolean;
+}) {
+  const [pressed, setPressed] = useState(false);
+
+  const cb = useCallback(
+    () => onLongPress(word, index),
+    [word, index, onLongPress]
+  );
+
+  const lpHandlers = useLongPress(cb, {
+    delay: 450,
+    onStart: () => { if (interactive) setPressed(true); },
+    onCancel: () => setPressed(false),
+  });
+
+  // After the long-press fires the callback we still need to reset pressed
+  // (the timer cleared inside useLongPress but setPressed(true) was called).
+  // We detect this by seeing that the timer fired and the callback ran via a
+  // short timeout reset.
+  const resetPressed = useCallback(() => {
+    const id = setTimeout(() => setPressed(false), 600);
+    return () => clearTimeout(id);
+  }, []);
+
+  if (!interactive) {
+    return <span className="select-none">{word} </span>;
+  }
+
+  return (
+    <span
+      {...lpHandlers}
+      onMouseUp={() => setPressed(false)}
+      className={cn(
+        "rounded-md cursor-pointer select-none touch-none transition-colors duration-100 leading-[inherit]",
+        pressed
+          ? "bg-primary/25 text-primary"
+          : "hover:bg-primary/12 hover:text-primary active:bg-primary/20"
+      )}
+      title="Long-press to study this word"
+      style={{ WebkitUserSelect: "none", userSelect: "none" }}
+      onTouchEnd={() => { setPressed(false); resetPressed(); }}
+    >
+      {word}{" "}
+    </span>
+  );
+});
+
 /* ── Ayah card — memoized; calls hooks internally so callbacks are stable ── */
 interface AyahCardProps {
   ayah: AyahWithTranslations;
@@ -78,6 +148,8 @@ interface AyahCardProps {
   showTransliteration: boolean;
   isLastRead: boolean;
   highlightLastRead: boolean;
+  /** Called when user long-presses a word in the Arabic text */
+  onWordStudy: (word: string, wordIndex: number, surahNum: number, ayahNum: number) => void;
 }
 
 const AyahCard = memo(function AyahCard({
@@ -91,11 +163,25 @@ const AyahCard = memo(function AyahCard({
   showTransliteration,
   isLastRead,
   highlightLastRead,
+  onWordStudy,
 }: AyahCardProps) {
   // Hooks inside the card — useQuranPlayer() no longer fires on timeupdate
   // because currentTime/duration were moved to PlayerProgressContext.
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
+
+  // Split arabic text into word tokens for long-press study
+  const arabicWords = useMemo(
+    () => ayah.arabic.split(/\s+/).filter(Boolean),
+    [ayah.arabic]
+  );
+
+  const handleWordLongPress = useCallback(
+    (word: string, wordIndex: number) => {
+      onWordStudy(word, wordIndex, surahNumber, ayah.numberInSurah);
+    },
+    [onWordStudy, surahNumber, ayah.numberInSurah]
+  );
 
   const isPlayingAyah =
     playerState.surahNumber === surahNumber &&
@@ -255,14 +341,22 @@ const AyahCard = memo(function AyahCard({
       </div>
 
       <div className="px-4 pb-4">
-        {/* Arabic */}
+        {/* Arabic — split into interactive word tokens for long-press word study */}
         <p
           className="font-arabic leading-[2.2] text-right py-3 transition-colors duration-500 text-foreground"
           style={{ fontSize: "var(--arabic-reading-size)" }}
           dir="rtl"
           lang="ar"
         >
-          {ayah.arabic}
+          {arabicWords.map((word, i) => (
+            <WordToken
+              key={i}
+              word={word}
+              index={i}
+              onLongPress={handleWordLongPress}
+              interactive={isArabicWord(word)}
+            />
+          ))}
         </p>
 
         {/* Transliteration — CSS fade-in; no Framer Motion instance per card */}
@@ -323,6 +417,9 @@ export default function SurahPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Word Study state ─────────────────────────────────────────────────────
+  const [studyTrigger, setStudyTrigger] = useState<WordStudyTrigger | null>(null);
+
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
 
@@ -349,6 +446,34 @@ export default function SurahPage() {
   const ayahListRef = useRef<HTMLDivElement>(null);
 
   // ── Load surah data ──────────────────────────────────────────────────────
+  // ── Word study callbacks ─────────────────────────────────────────────────
+  const handleWordStudy = useCallback(
+    (word: string, wordIndex: number, sNum: number, aNum: number) => {
+      const surahObj = surahs.find((s) => s.number === sNum);
+      setStudyTrigger({
+        wordText: word,
+        wordIndex,
+        surahNum: sNum,
+        surahName: surahObj?.name ?? "",
+        ayahNum: aNum,
+      });
+    },
+    []
+  );
+
+  const handleNavigateToVerse = useCallback(
+    (targetSurah: number, targetAyah: number) => {
+      if (targetSurah === surahNum) {
+        // Same surah — scroll to the ayah
+        const el = document.getElementById(`ayah-${targetSurah}-${targetAyah}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        navigate(`/quran/${targetSurah}`);
+      }
+    },
+    [surahNum, navigate]
+  );
+
   const load = useCallback((num: number) => {
     setIsLoading(true);
     setError(null);
@@ -706,6 +831,7 @@ export default function SurahPage() {
                   showTransliteration={settings.showTransliteration}
                   isLastRead={ayah.numberInSurah === lastReadAyahNum}
                   highlightLastRead={settings.highlightLastReadVerse}
+                  onWordStudy={handleWordStudy}
                 />
               ))}
             </div>
@@ -728,6 +854,13 @@ export default function SurahPage() {
 
         <div className="h-10" />
       </div>
+
+      {/* ── Word Study Sheet — rendered outside the scrollable container ── */}
+      <WordStudySheet
+        trigger={studyTrigger}
+        onClose={() => setStudyTrigger(null)}
+        onNavigate={handleNavigateToVerse}
+      />
     </div>
   );
 }
