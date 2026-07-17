@@ -57,16 +57,30 @@ export interface LexiconEntry {
 // Strip tashkeel + tatweel + other marks for matching
 export function stripDiacritics(text: string): string {
   return text
-    .replace(/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "")
-    .replace(/\u0640/g, "") // tatweel
-    .replace(/[ٱإأآا]/g, "ا") // normalise alif variants
+    // 1. Remove BOM (appears on the first word of many AlQuran.cloud responses)
+    .replace(/\uFEFF/g, "")
+    // 2. Superscript alef (U+0670) is used in Uthmani orthography to represent a
+    //    phonemic alef that is not written as an explicit letter (e.g. رَحْمَٰن, مَٰلِك).
+    //    Convert it to a regular alef so it participates in root matching.
+    .replace(/\u0670/g, "\u0627")
+    // 3. Strip all remaining tashkeel, Quranic pause/sajda marks, and small
+    //    hamza/waw/ya signs (U+06E5, U+06E6 are NOT in the \u06DF-\u06E4 block).
+    .replace(/[\u064B-\u065F\u06D6-\u06DC\u06DF-\u06E4\u06E5\u06E6\u06E7\u06E8\u06EA-\u06ED]/g, "")
+    // 4. Tatweel (elongation)
+    .replace(/\u0640/g, "")
+    // 5. Normalise all alif variants (hamza-wasl ٱ, hamza-above أ, hamza-below إ,
+    //    madda آ) to plain alef ا
+    .replace(/[ٱإأآا]/g, "\u0627")
+    // 6. Alef maqsura (ى U+0649) looks like ya but is a different codepoint —
+    //    normalise to ya (ي U+064A) so كرسى / كرسي and على / علي both match
+    .replace(/\u0649/g, "\u064A")
     .trim();
 }
 
 const LEXICON: LexiconEntry[] = [
   { arabic: "اللَّه", root: "أله", rootMeaning: "To worship, to be bewildered", pos: "Proper Noun", explanation: "The proper name of the One God in Arabic. It is derived from the root 'ilāh' (deity) with the definite article, uniquely designating the Creator. Unlike generic terms for 'god', this name has no plural, no feminine form, and belongs exclusively to the Creator.", urdu: "اللہ (معبودِ حقیقی)" },
   { arabic: "رَبّ", root: "ربب", rootMeaning: "To nurture, sustain, foster", pos: "Noun", explanation: "'Rabb' means Lord, Master, and Nurturer. It conveys that Allah is the One who created all things and continues to sustain, manage, and perfect them. Every created being is nurtured by its Rabb.", urdu: "پروردگار، رب" },
-  { arabic: "رَحْمَن", root: "رحم", rootMeaning: "Mercy, compassion", pos: "Adjective", explanation: "Ar-Rahmān is one of the most exalted names of Allah, denoting the One whose mercy is vast and comprehensive, encompassing all of creation in this world. It is derived from 'rahmah' (mercy) and is an intensive form indicating mercy of the greatest magnitude.", urdu: "بے حد رحم کرنے والا" },
+  { arabic: "رَحْمَان", root: "رحم", rootMeaning: "Mercy, compassion", pos: "Adjective", explanation: "Ar-Rahmān is one of the most exalted names of Allah, denoting the One whose mercy is vast and comprehensive, encompassing all of creation in this world. It is derived from 'rahmah' (mercy) and is an intensive form indicating mercy of the greatest magnitude.", urdu: "بے حد رحم کرنے والا" },
   { arabic: "رَحِيم", root: "رحم", rootMeaning: "Mercy, compassion", pos: "Adjective", explanation: "Ar-Rahīm is another name of Allah meaning the Especially Merciful. While Ar-Rahmān indicates universal mercy encompassing all beings, Ar-Rahīm specifically refers to special mercy reserved for the believers in the Hereafter.", urdu: "بار بار رحم کرنے والا" },
   { arabic: "بِسْم", root: "سمو", rootMeaning: "To be elevated, exalted", pos: "Preposition + Noun", explanation: "'Bism' (In the name of) is a formula of consecration. Beginning any action with 'Bismillah' seeks Allah's blessing and protection and acknowledges that every act is done in His name, with His permission, and with dependence on Him.", urdu: "نام سے (بنام)" },
   { arabic: "اسم", root: "سمو", rootMeaning: "To be elevated, exalted", pos: "Noun", explanation: "'Ism' (name) in Arabic is derived from a root meaning elevation. Names elevate and distinguish beings. In Islamic theology, Allah's names (al-Asmā' al-Husnā) are the most elevated and beautiful of all names.", urdu: "نام" },
@@ -154,8 +168,63 @@ for (const entry of LEXICON) {
   LEXICON_MAP.set(stripDiacritics(entry.arabic), entry);
 }
 
+/**
+ * Look up a raw Quranic word in the curated lexicon.
+ *
+ * Cascade strategy (runs until a match is found):
+ *  1. Direct stripped lookup          e.g. بِسْمِ  → بسم ✓
+ *  2. Strip definite article ال       e.g. ٱلرَّحِيمِ → رحيم ✓
+ *  3. Strip single-letter prefix      e.g. وَرَبِّ  → رب ✓
+ *     (و ف ب ل ك)
+ *  4. Strip prefix + ال               e.g. وَٱللَّهِ → الله ✓
+ *  5. Map لل → ال (ligated لِلَّهِ)   e.g. لِلَّهِ  → لله → الله ✓
+ *  6. Strip prefix + لل → ال          e.g. فَلِلَّهِ → لله → الله ✓
+ */
 export function lookupLexicon(arabicWord: string): LexiconEntry | undefined {
-  return LEXICON_MAP.get(stripDiacritics(arabicWord));
+  const s = stripDiacritics(arabicWord);
+  let e: LexiconEntry | undefined;
+
+  // 1. Direct
+  e = LEXICON_MAP.get(s);
+  if (e) return e;
+
+  // 2. Strip ال
+  if (s.startsWith("ال")) {
+    e = LEXICON_MAP.get(s.slice(2));
+    if (e) return e;
+  }
+
+  // 5. Ligated form: لِلَّهِ → لله, where ل is preposition "for" and الله loses its
+  //    hamzatu'l-wasl. Prepend ا to restore the full word: لله → الله.
+  //    Also try root-only (s.slice(2)) as a fallback for other لل+ words.
+  if (s.startsWith("لل")) {
+    e = LEXICON_MAP.get("\u0627" + s);   // ا + لله = الله ✓
+    if (e) return e;
+    e = LEXICON_MAP.get(s.slice(2));     // fallback: strip both lams
+    if (e) return e;
+  }
+
+  // 3 & 4. Single-letter prefix (و ف ب ل ك)
+  if (s.length > 2 && /^[وفبلك]/.test(s)) {
+    const np = s.slice(1);
+    // 3a. prefix only
+    e = LEXICON_MAP.get(np);
+    if (e) return e;
+    // 4. prefix + ال
+    if (np.startsWith("ال")) {
+      e = LEXICON_MAP.get(np.slice(2));
+      if (e) return e;
+    }
+    // 6. prefix + لل → ال
+    if (np.startsWith("لل")) {
+      e = LEXICON_MAP.get("ال" + np.slice(2));
+      if (e) return e;
+      e = LEXICON_MAP.get(np.slice(2));
+      if (e) return e;
+    }
+  }
+
+  return undefined;
 }
 
 // ─── Verse words cache ─────────────────────────────────────────────────────────
@@ -222,7 +291,10 @@ export async function fetchWordOccurrences(
   if (!query) return { total: 0, occurrences: [] };
   if (occurrenceCache.has(query)) return occurrenceCache.get(query)!;
 
-  const url = `${ALQURAN}/search/${encodeURIComponent(query)}/all/quran-uthmani`;
+  // Note: specifying an edition (e.g. /quran-uthmani) causes a 404 on this
+  // endpoint. Omitting it returns results from all editions, which is fine
+  // since we only use surah/ayah numbers from the response, not the text.
+  const url = `${ALQURAN}/search/${encodeURIComponent(query)}/all`;
 
   try {
     const res = await fetchWithTimeout(url, { timeoutMs: 12_000 });
@@ -250,7 +322,7 @@ export async function fetchWordOccurrences(
 /** Full-text search for the Quran word search panel */
 export async function searchQuranWords(query: string): Promise<WordOccurrence[]> {
   if (!query.trim()) return [];
-  const url = `${ALQURAN}/search/${encodeURIComponent(query.trim())}/all/quran-uthmani`;
+  const url = `${ALQURAN}/search/${encodeURIComponent(query.trim())}/all`;
   try {
     const res = await fetchWithTimeout(url, { timeoutMs: 12_000 });
     if (!res.ok) return [];
