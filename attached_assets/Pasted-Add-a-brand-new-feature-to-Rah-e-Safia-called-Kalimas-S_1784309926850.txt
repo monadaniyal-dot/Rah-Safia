@@ -1,0 +1,141 @@
+Add a brand-new feature to Rah-e-Safia called:
+
+☪️ Kalimas & Shahadah
+
+This should be a complete educational module and should NOT modify or replace any existing feature.
+
+The design must match the premium Islamic theme already used throughout the app.
+
+==================================================
+MAIN PAGE
+==================================================
+
+Create a beautiful home screen with the following sections:
+
+1. Six Kalimas
+2. Shahadah
+3. Importance of Tawheed
+4. Learning Resources
+
+==================================================
+SECTION 1 – SIX KALIMAS
+==================================================
+
+Create separate pages for each Kalima:
+
+• First Kalima (Tayyibah)
+• Second Kalima (Shahadah)
+• Third Kalima (Tamjeed)
+• Fourth Kalima (Tawheed)
+• Fifth Kalima (Istighfar)
+• Sixth Kalima (Radd-e-Kufr)
+
+Each Kalima page should contain:
+
+• Arabic text
+• Transliteration
+• English translation
+• Urdu translation
+• Word-by-word meaning
+• Short explanation
+• Benefits of understanding and reciting it
+• Audio recitation
+• Copy button
+• Share button
+• Bookmark button
+• Adjustable Arabic font size
+
+==================================================
+SECTION 2 – SHAHADAH
+==================================================
+
+Create a dedicated page explaining the Shahadah.
+
+Include:
+
+• Arabic
+• Transliteration
+• English translation
+• Urdu translation
+• Word-by-word meaning
+• Explanation of Tawheed
+• Explanation of accepting Prophet Muhammad ﷺ as Allah's Messenger
+• Importance of the Shahadah in Islam
+• Relevant Quran verses
+• Authentic Hadith references
+• Audio recitation
+
+==================================================
+SECTION 3 – IMPORTANCE OF TAWHEED
+==================================================
+
+Create educational cards covering:
+
+• What is Tawheed?
+• The Three Categories of Tawheed
+• Why Tawheed is the foundation of Islam
+• Avoiding Shirk
+• Quranic references
+• Authentic Hadith references
+
+==================================================
+SECTION 4 – LEARNING MODE
+==================================================
+
+Add a learning mode that helps users memorize the Kalimas.
+
+Features:
+
+• Play audio
+• Repeat audio
+• Auto-scroll while listening
+• Highlight words during playback
+• Practice mode
+• Memorization progress
+
+==================================================
+SEARCH
+==================================================
+
+Allow searching by:
+
+• Arabic
+• English
+• Urdu
+• Transliteration
+
+==================================================
+FAVOURITES
+==================================================
+
+Allow bookmarking.
+
+Create a dedicated "Favourite Kalimas" page.
+
+==================================================
+OFFLINE SUPPORT
+==================================================
+
+Store all content locally so it works completely offline.
+
+==================================================
+UI REQUIREMENTS
+==================================================
+
+• Premium Islamic design
+• Beautiful typography
+• Elegant cards
+• Smooth animations
+• Light mode
+• Dark mode
+• Fully responsive
+• Mobile-first design
+• Consistent with the existing Rah-e-Safia design language
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT remove or modify any existing features.
+
+Only add this new Kalimas & Shahadah module while preserving the current application architecture.

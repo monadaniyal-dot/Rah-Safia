@@ -11,6 +11,7 @@ import {
   Info,
   Repeat2,
   HandHeart,
+  ScrollText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -89,6 +90,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "الأدعية",
     icon: HandHeart,
     path: "/supplications",
+  },
+  {
+    id: "kalimas",
+    label: "Kalimas & Shahadah",
+    arabicLabel: "الكلمات والشهادة",
+    icon: ScrollText,
+    path: "/kalimas",
   },
   {
     id: "bookmarks",
@@ -200,5 +208,15 @@ export const featureCards: FeatureCard[] = [
     colorClass: "from-rose-600 to-rose-900",
     iconBgClass: "bg-rose-500/20",
     path: "/supplications",
+  },
+  {
+    id: "kalimas",
+    icon: ScrollText,
+    arabicTitle: "الكلمات الإسلامية والشهادة",
+    title: "Kalimas & Shahadah",
+    description: "Six Kalimas, Shahadah, Tawheed education, and memorisation practice",
+    colorClass: "from-teal-600 to-emerald-900",
+    iconBgClass: "bg-teal-500/20",
+    path: "/kalimas",
   },
 ];
