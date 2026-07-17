@@ -74,6 +74,9 @@ export function stripDiacritics(text: string): string {
     // 6. Alef maqsura (ى U+0649) looks like ya but is a different codepoint —
     //    normalise to ya (ي U+064A) so كرسى / كرسي and على / علي both match
     .replace(/\u0649/g, "\u064A")
+    // 7. Ta marbuta (ة U+0629) is a word-final feminine marker. Normalise to ha
+    //    (ه U+0647) so رَحْمَةِ / رَحْمَةً / رَحْمَةُ all match the lexicon entry رَحْمَة.
+    .replace(/\u0629/g, "\u0647")
     .trim();
 }
 
@@ -217,10 +220,55 @@ export function lookupLexicon(arabicWord: string): LexiconEntry | undefined {
     }
     // 6. prefix + لل → ال
     if (np.startsWith("لل")) {
-      e = LEXICON_MAP.get("ال" + np.slice(2));
+      e = LEXICON_MAP.get("\u0627" + np);
       if (e) return e;
       e = LEXICON_MAP.get(np.slice(2));
       if (e) return e;
+    }
+  }
+
+  // ── Extended fallbacks: inflected forms ───────────────────────────────────
+  // 7. Sound plural / broken plural suffixes: ون، ين، ات
+  //    e.g. المؤمنون → مؤمن ✓  الكافرين → كافر ✓  الصالحات → صالح
+  for (const suf of ["ون", "ين", "ات"]) {
+    if (s.endsWith(suf) && s.length > suf.length + 1) {
+      const stem = s.slice(0, -suf.length);
+      e = LEXICON_MAP.get(stem);
+      if (e) return e;
+      if (stem.startsWith("ال")) {
+        e = LEXICON_MAP.get(stem.slice(2));
+        if (e) return e;
+      }
+      // Also try single-letter prefix before ال
+      if (stem.length > 3 && /^[وفبلك]/.test(stem)) {
+        const np2 = stem.slice(1);
+        if (np2.startsWith("ال")) {
+          e = LEXICON_MAP.get(np2.slice(2));
+          if (e) return e;
+        }
+      }
+    }
+  }
+
+  // 8. Attached pronoun suffixes (ضمائر متصلة): هم، ها، ه، ك، نا، ني، هن، هما، كم
+  //    e.g. عِلْمُهُ → علم ✓  رَبُّهُمْ → رب ✓  رَحْمَتُهُ → رحمه (=رحمة)
+  const pronSuffixes = ["هما", "هم", "هن", "كم", "كن", "كما", "ها", "ني", "نا", "ك", "ه"];
+  for (const suf of pronSuffixes) {
+    // Require at least 2 Arabic characters before the suffix (> len+1, not > len+2)
+    if (s.endsWith(suf) && s.length > suf.length + 1) {
+      const stem = s.slice(0, -suf.length);
+      e = LEXICON_MAP.get(stem);
+      if (e) return e;
+      if (stem.startsWith("ال")) {
+        e = LEXICON_MAP.get(stem.slice(2));
+        if (e) return e;
+      }
+      // Stem may itself end in ه (ta marbuta already normalised): try without it
+      if (stem.endsWith("ه") && stem.length > 2) {
+        const stemNoH = stem.slice(0, -1);
+        e = LEXICON_MAP.get(stemNoH);
+        if (e) return e;
+      }
     }
   }
 

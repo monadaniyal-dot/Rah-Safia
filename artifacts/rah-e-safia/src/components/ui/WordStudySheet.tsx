@@ -483,15 +483,21 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
                   </div>
                 )}
 
-                {/* If no lexicon entry, show a basic info notice */}
+                {/* If no lexicon entry, show a clear, friendly message */}
                 {!lexEntry && !loadingWord && (
                   <div className="flex items-start gap-2.5 rounded-xl border border-border/50 bg-secondary/30 p-3">
                     <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" strokeWidth={1.8} />
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Detailed morphological data (root, lemma, case) is sourced from the{" "}
-                      <span className="font-semibold">Quranic Arabic Corpus</span>. Search is available
-                      for full morphological breakdown.
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-foreground/70">
+                        Root &amp; morphology not indexed for this form
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Conjugated verbs, broken plurals, and rare word forms may not have a
+                        direct dictionary entry. The translation above comes from Quran.com
+                        word-by-word data. Tap <span className="font-medium">Occurrences</span>{" "}
+                        below to find every verse containing this word.
+                      </p>
+                    </div>
                   </div>
                 )}
 

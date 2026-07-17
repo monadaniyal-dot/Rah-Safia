@@ -148,6 +148,8 @@ interface AyahCardProps {
   showTransliteration: boolean;
   isLastRead: boolean;
   highlightLastRead: boolean;
+  /** Briefly flash/highlight this card (e.g. navigated-to from occurrence list) */
+  isFlashed: boolean;
   /** Called when user long-presses a word in the Arabic text */
   onWordStudy: (word: string, wordIndex: number, surahNum: number, ayahNum: number) => void;
 }
@@ -163,12 +165,24 @@ const AyahCard = memo(function AyahCard({
   showTransliteration,
   isLastRead,
   highlightLastRead,
+  isFlashed,
   onWordStudy,
 }: AyahCardProps) {
   // Hooks inside the card — useQuranPlayer() no longer fires on timeupdate
   // because currentTime/duration were moved to PlayerProgressContext.
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const { state: playerState, playAyah, togglePlayPause } = useQuranPlayer();
+
+  // Flash state: true for ~2.4 s after this card is navigated to from the
+  // word-study occurrence list. We use local state so only this one card
+  // re-renders when the animation ends, not the whole ayah list.
+  const [flashActive, setFlashActive] = useState(false);
+  useEffect(() => {
+    if (!isFlashed) return;
+    setFlashActive(true);
+    const t = setTimeout(() => setFlashActive(false), 2400);
+    return () => clearTimeout(t);
+  }, [isFlashed]);
 
   // Split arabic text into word tokens for long-press study
   const arabicWords = useMemo(
@@ -217,6 +231,8 @@ const AyahCard = memo(function AyahCard({
     ? "border-primary/50 bg-card ring-1 ring-primary/20"
     : shouldHighlightLastRead
     ? "border-gold/50 bg-card ring-1 ring-gold/25"
+    : flashActive
+    ? "border-emerald-400/60 bg-emerald-500/5 ring-2 ring-emerald-400/30"
     : "border-primary/12 bg-card";
 
   return (
@@ -251,6 +267,16 @@ const AyahCard = memo(function AyahCard({
             exit={{ scaleX: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="h-0.5 w-full bg-gradient-to-r from-gold/40 via-gold to-gold/40 origin-left"
+          />
+        )}
+        {!isPlayingAyah && !shouldHighlightLastRead && flashActive && (
+          <motion.div
+            key="flash-strip"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="h-0.5 w-full bg-gradient-to-r from-emerald-400/40 via-emerald-400 to-emerald-400/40 origin-left"
           />
         )}
       </AnimatePresence>
@@ -420,6 +446,11 @@ export default function SurahPage() {
   // ── Word Study state ─────────────────────────────────────────────────────
   const [studyTrigger, setStudyTrigger] = useState<WordStudyTrigger | null>(null);
 
+  // ── Navigated-to-ayah flash highlight ────────────────────────────────────
+  // Set to the target ayah number when navigating from word-study occurrences.
+  // Cleared automatically after the animation completes.
+  const [flashAyahNum, setFlashAyahNum] = useState<number>(0);
+
   const surahNum = parseInt(number ?? "1", 10);
   const surah = surahs.find((s) => s.number === surahNum);
 
@@ -464,11 +495,15 @@ export default function SurahPage() {
   const handleNavigateToVerse = useCallback(
     (targetSurah: number, targetAyah: number) => {
       if (targetSurah === surahNum) {
-        // Same surah — scroll to the ayah
+        // Same surah: scroll immediately and flash the card
         const el = document.getElementById(`ayah-${targetSurah}-${targetAyah}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFlashAyahNum(targetAyah);
+        setTimeout(() => setFlashAyahNum(0), 2600);
       } else {
-        navigate(`/quran/${targetSurah}`);
+        // Different surah: pass ayah number via URL query param so the target
+        // page can scroll and flash it after loading.
+        navigate(`/quran/${targetSurah}?ayah=${targetAyah}`);
       }
     },
     [surahNum, navigate]
@@ -506,6 +541,29 @@ export default function SurahPage() {
       setLastReadAyahNum(0);
     }
   }, [surahNum]);
+
+  // ── After ayahs load: check for ?ayah=N navigation target ──────────────
+  // When the user taps an occurrence in the word-study sheet and the target is
+  // a different surah, we navigate to /quran/{N}?ayah={M}. This effect reads
+  // that param once and scrolls + flashes the referenced ayah.
+  useEffect(() => {
+    if (!ayahs.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const targetAyah = parseInt(params.get("ayah") ?? "0", 10);
+    if (!targetAyah) return;
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.getElementById(`ayah-${surahNum}-${targetAyah}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setFlashAyahNum(targetAyah);
+          setTimeout(() => setFlashAyahNum(0), 2600);
+        }
+      }, 200);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ayahs.length]);
 
   // ── After ayahs load: restore mode + scroll to saved position ─────────────
   useEffect(() => {
@@ -831,6 +889,7 @@ export default function SurahPage() {
                   showTransliteration={settings.showTransliteration}
                   isLastRead={ayah.numberInSurah === lastReadAyahNum}
                   highlightLastRead={settings.highlightLastReadVerse}
+                  isFlashed={flashAyahNum === ayah.numberInSurah}
                   onWordStudy={handleWordStudy}
                 />
               ))}
