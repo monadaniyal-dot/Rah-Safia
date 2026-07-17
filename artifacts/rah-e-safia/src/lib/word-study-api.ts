@@ -171,108 +171,202 @@ for (const entry of LEXICON) {
   LEXICON_MAP.set(stripDiacritics(entry.arabic), entry);
 }
 
+// ── Lexicon match result ─────────────────────────────────────────────────────
+
+/** Returned by lookupLexiconFull — entry + how the word was matched */
+export interface LexiconMatch {
+  entry: LexiconEntry;
+  /**
+   * Describes how the match was made.
+   * Used by deriveMorphNote() to build a human-readable morphological summary.
+   * Examples: "direct", "definite", "preposition-ب", "plural-sound-masc-nom",
+   *           "definite+pronoun-هم", "conjunction-و+definite"
+   */
+  matchType: string;
+}
+
 /**
  * Look up a raw Quranic word in the curated lexicon.
  *
  * Cascade strategy (runs until a match is found):
- *  1. Direct stripped lookup          e.g. بِسْمِ  → بسم ✓
- *  2. Strip definite article ال       e.g. ٱلرَّحِيمِ → رحيم ✓
- *  3. Strip single-letter prefix      e.g. وَرَبِّ  → رب ✓
- *     (و ف ب ل ك)
- *  4. Strip prefix + ال               e.g. وَٱللَّهِ → الله ✓
- *  5. Map لل → ال (ligated لِلَّهِ)   e.g. لِلَّهِ  → لله → الله ✓
- *  6. Strip prefix + لل → ال          e.g. فَلِلَّهِ → لله → الله ✓
+ *  1. Direct stripped lookup          بِسْمِ  → بسم ✓
+ *  2. Strip definite article ال       ٱلرَّحِيمِ → رحيم ✓
+ *  3. Ligated لل (لِلَّهِ → الله)    لِلَّهِ → لله → الله ✓
+ *  4. Single-letter prefix (و ف ب ل ك) وَرَبِّ → رب ✓
+ *  5. Prefix + ال                     وَٱللَّهِ → الله ✓
+ *  6. Sound plural suffix (ون ين ات)  الْمُؤْمِنُونَ → مؤمن ✓
+ *  7. Attached pronoun suffix          عِلْمُهُ → علم ✓
  */
-export function lookupLexicon(arabicWord: string): LexiconEntry | undefined {
+export function lookupLexiconFull(arabicWord: string): LexiconMatch | undefined {
   const s = stripDiacritics(arabicWord);
-  let e: LexiconEntry | undefined;
+
+  // Helper: attempt a map lookup and return LexiconMatch if found
+  const hit = (key: string, matchType: string): LexiconMatch | undefined => {
+    const entry = LEXICON_MAP.get(key);
+    return entry ? { entry, matchType } : undefined;
+  };
 
   // 1. Direct
-  e = LEXICON_MAP.get(s);
-  if (e) return e;
+  let m = hit(s, "direct");
+  if (m) return m;
 
   // 2. Strip ال
   if (s.startsWith("ال")) {
-    e = LEXICON_MAP.get(s.slice(2));
-    if (e) return e;
+    m = hit(s.slice(2), "definite");
+    if (m) return m;
   }
 
-  // 5. Ligated form: لِلَّهِ → لله, where ل is preposition "for" and الله loses its
-  //    hamzatu'l-wasl. Prepend ا to restore the full word: لله → الله.
-  //    Also try root-only (s.slice(2)) as a fallback for other لل+ words.
+  // 3. Ligated لل (preposition لِ + ال merged, hamzah elided)
   if (s.startsWith("لل")) {
-    e = LEXICON_MAP.get("\u0627" + s);   // ا + لله = الله ✓
-    if (e) return e;
-    e = LEXICON_MAP.get(s.slice(2));     // fallback: strip both lams
-    if (e) return e;
+    m = hit("\u0627" + s, "preposition-لِ");        // ا + لله = الله
+    if (m) return m;
+    m = hit(s.slice(2), "preposition-لِ");
+    if (m) return m;
   }
 
-  // 3 & 4. Single-letter prefix (و ف ب ل ك)
+  // 4 & 5. Single-letter prefix (و ف ب ل ك)
+  const PFX: Record<string, string> = {
+    "و": "conjunction-و", "ف": "consequence-ف",
+    "ب": "preposition-ب", "ل": "preposition-لِ", "ك": "comparison-ك",
+  };
   if (s.length > 2 && /^[وفبلك]/.test(s)) {
+    const pfxType = PFX[s[0]] ?? "prefix";
     const np = s.slice(1);
-    // 3a. prefix only
-    e = LEXICON_MAP.get(np);
-    if (e) return e;
-    // 4. prefix + ال
+
+    m = hit(np, pfxType);
+    if (m) return m;
+
     if (np.startsWith("ال")) {
-      e = LEXICON_MAP.get(np.slice(2));
-      if (e) return e;
+      m = hit(np.slice(2), pfxType + "+definite");
+      if (m) return m;
     }
-    // 6. prefix + لل → ال
     if (np.startsWith("لل")) {
-      e = LEXICON_MAP.get("\u0627" + np);
-      if (e) return e;
-      e = LEXICON_MAP.get(np.slice(2));
-      if (e) return e;
+      m = hit("\u0627" + np, pfxType + "+preposition-لِ");
+      if (m) return m;
+      m = hit(np.slice(2), pfxType + "+preposition-لِ");
+      if (m) return m;
     }
   }
 
-  // ── Extended fallbacks: inflected forms ───────────────────────────────────
-  // 7. Sound plural / broken plural suffixes: ون، ين، ات
-  //    e.g. المؤمنون → مؤمن ✓  الكافرين → كافر ✓  الصالحات → صالح
-  for (const suf of ["ون", "ين", "ات"]) {
+  // 6. Sound plural suffixes: ون (nom) · ين (gen/acc) · ات (fem)
+  for (const [suf, sufType] of [
+    ["ون", "plural-sound-masc-nom"],
+    ["ين", "plural-sound-masc-gen"],
+    ["ات", "plural-sound-fem"],
+  ] as [string, string][]) {
     if (s.endsWith(suf) && s.length > suf.length + 1) {
       const stem = s.slice(0, -suf.length);
-      e = LEXICON_MAP.get(stem);
-      if (e) return e;
+      m = hit(stem, sufType);
+      if (m) return m;
       if (stem.startsWith("ال")) {
-        e = LEXICON_MAP.get(stem.slice(2));
-        if (e) return e;
+        m = hit(stem.slice(2), "definite+" + sufType);
+        if (m) return m;
       }
-      // Also try single-letter prefix before ال
       if (stem.length > 3 && /^[وفبلك]/.test(stem)) {
         const np2 = stem.slice(1);
         if (np2.startsWith("ال")) {
-          e = LEXICON_MAP.get(np2.slice(2));
-          if (e) return e;
+          m = hit(np2.slice(2), "prefix+definite+" + sufType);
+          if (m) return m;
         }
       }
     }
   }
 
-  // 8. Attached pronoun suffixes (ضمائر متصلة): هم، ها، ه، ك، نا، ني، هن، هما، كم
-  //    e.g. عِلْمُهُ → علم ✓  رَبُّهُمْ → رب ✓  رَحْمَتُهُ → رحمه (=رحمة)
-  const pronSuffixes = ["هما", "هم", "هن", "كم", "كن", "كما", "ها", "ني", "نا", "ك", "ه"];
-  for (const suf of pronSuffixes) {
-    // Require at least 2 Arabic characters before the suffix (> len+1, not > len+2)
+  // 7. Attached pronoun suffixes (ضمائر متصلة)
+  for (const suf of ["هما", "هم", "هن", "كم", "كن", "كما", "ها", "ني", "نا", "ك", "ه"]) {
     if (s.endsWith(suf) && s.length > suf.length + 1) {
       const stem = s.slice(0, -suf.length);
-      e = LEXICON_MAP.get(stem);
-      if (e) return e;
+      const sufType = `pronoun-${suf}`;
+      m = hit(stem, sufType);
+      if (m) return m;
       if (stem.startsWith("ال")) {
-        e = LEXICON_MAP.get(stem.slice(2));
-        if (e) return e;
+        m = hit(stem.slice(2), "definite+" + sufType);
+        if (m) return m;
       }
-      // Stem may itself end in ه (ta marbuta already normalised): try without it
       if (stem.endsWith("ه") && stem.length > 2) {
-        const stemNoH = stem.slice(0, -1);
-        e = LEXICON_MAP.get(stemNoH);
-        if (e) return e;
+        m = hit(stem.slice(0, -1), sufType);  // ta-marbuta stem
+        if (m) return m;
       }
     }
   }
 
   return undefined;
+}
+
+/** Backward-compatible wrapper */
+export function lookupLexicon(arabicWord: string): LexiconEntry | undefined {
+  return lookupLexiconFull(arabicWord)?.entry;
+}
+
+// ── Morphological note derivation ─────────────────────────────────────────────
+
+const PRON_LABELS: Record<string, string> = {
+  "هما": "dual (their/them both)",
+  "هم":  "3rd person plural masculine (their/them)",
+  "هن":  "3rd person plural feminine",
+  "كم":  "2nd person plural masculine (your/you)",
+  "كن":  "2nd person plural feminine",
+  "كما": "dual 2nd person (your/you both)",
+  "ها":  "3rd person singular feminine (her/its)",
+  "ني":  "1st person singular (me/my)",
+  "نا":  "1st person plural (us/our)",
+  "ك":   "2nd person singular (you/your)",
+  "ه":   "3rd person singular masculine (his/its)",
+};
+
+const PFX_LABELS: Record<string, string> = {
+  "conjunction-و":  "conjunction وَ (and)",
+  "consequence-ف":  "particle فَ (then / so)",
+  "preposition-ب":  "preposition بِ (in / with / by)",
+  "preposition-لِ": "preposition لِ (for / to)",
+  "comparison-ك":   "comparative particle كَ (like / as)",
+};
+
+/**
+ * Derive a human-readable morphological note from the lookup match type and
+ * the part-of-speech label of the matched lexicon entry.
+ */
+export function deriveMorphNote(matchType: string, pos: string): string {
+  const base = pos || "word";
+
+  if (matchType === "direct") {
+    return `${base} · Base / lemma form — no morphological attachments.`;
+  }
+  if (matchType === "definite") {
+    return `${base} · Definite — prefixed with ال (al-, the definite article).`;
+  }
+
+  // Plural suffixes
+  if (matchType.includes("plural-sound-masc-nom")) {
+    const def = matchType.startsWith("definite") ? "Definite " : "";
+    return `${def}Sound masculine plural · Nominative case (subject position) · ${base}.`;
+  }
+  if (matchType.includes("plural-sound-masc-gen")) {
+    const def = matchType.startsWith("definite") ? "Definite " : "";
+    return `${def}Sound masculine plural · Genitive / accusative case · ${base}.`;
+  }
+  if (matchType.includes("plural-sound-fem")) {
+    const def = matchType.startsWith("definite") ? "Definite " : "";
+    return `${def}Sound feminine plural (جمع مؤنث سالم) · ${base}.`;
+  }
+
+  // Pronoun suffixes
+  for (const [suf, label] of Object.entries(PRON_LABELS)) {
+    if (matchType === `pronoun-${suf}` || matchType === `definite+pronoun-${suf}`) {
+      const def = matchType.startsWith("definite") ? "Definite " : "";
+      return `${def}${base} · With attached pronoun suffix ـ${suf} — ${label}.`;
+    }
+  }
+
+  // Prefix combinations
+  for (const [pfx, label] of Object.entries(PFX_LABELS)) {
+    if (matchType.includes(pfx)) {
+      const hasDef = matchType.includes("definite");
+      return `${hasDef ? "Definite " : ""}${base} · With ${label}.`;
+    }
+  }
+
+  return `${base}.`;
 }
 
 // ─── Verse words cache ─────────────────────────────────────────────────────────
@@ -303,9 +397,12 @@ export async function fetchVerseWords(
   if (verseWordsCache.has(key)) return verseWordsCache.get(key)!;
   if (verseWordsInflight.has(key)) return verseWordsInflight.get(key)!;
 
+  // translation_fields=text requests the word-by-word English meaning sub-object.
+  // Without it, w.translation is undefined for most words.
   const url =
     `${QURANCOM}/verses/by_key/${surahNum}:${ayahNum}` +
-    `?words=true&word_fields=text_uthmani,transliteration,location,char_type_name`;
+    `?words=true&word_fields=text_uthmani,transliteration,translation,location,char_type_name` +
+    `&translation_fields=text`;
 
   const promise = fetchWithTimeout(url, { timeoutMs: 10_000 })
     .then(async (res) => {
@@ -364,6 +461,53 @@ export async function fetchWordOccurrences(
     return result;
   } catch {
     return { total: 0, occurrences: [] };
+  }
+}
+
+// ── Tafseer ────────────────────────────────────────────────────────────────────
+
+export interface TafseerResult {
+  /** Tafseer prose — may be HTML (check isHtml flag) */
+  text: string;
+  /** Human-readable name of the tafseer work */
+  name: string;
+  /** Whether text contains HTML markup */
+  isHtml: boolean;
+}
+
+const tafseerCache = new Map<string, TafseerResult | null>();
+
+/**
+ * Fetch the Ibn Kathir tafseer (English, Quran.com ID 169) for a verse.
+ * Returns null when unavailable (network error, missing entry, etc.).
+ *
+ * Uses the same api.quran.com domain as fetchVerseWords so the same CORS
+ * allow-list applies and no additional configuration is needed.
+ */
+export async function fetchTafseer(
+  surahNum: number,
+  ayahNum: number,
+): Promise<TafseerResult | null> {
+  const key = `${surahNum}:${ayahNum}`;
+  if (tafseerCache.has(key)) return tafseerCache.get(key) ?? null;
+
+  const url = `${QURANCOM}/tafsirs/169/by_key/${key}`;
+  try {
+    const res = await fetchWithTimeout(url, { timeoutMs: 12_000 });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const content: string = json?.tafsir?.resource_content ?? "";
+    if (!content) { tafseerCache.set(key, null); return null; }
+    const result: TafseerResult = {
+      text: content,
+      name: (json?.tafsir?.name as string) ?? "Ibn Kathir",
+      isHtml: /<[a-z]/i.test(content),
+    };
+    tafseerCache.set(key, result);
+    return result;
+  } catch {
+    tafseerCache.set(key, null);
+    return null;
   }
 }
 
