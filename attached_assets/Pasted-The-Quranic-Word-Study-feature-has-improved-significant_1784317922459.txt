@@ -1,0 +1,87 @@
+The Quranic Word Study feature has improved significantly, but I need a complete technical audit of the underlying data rather than more UI changes.
+
+Do NOT redesign the UI.
+
+Do NOT modify the layout unless necessary.
+
+Instead, investigate whether the current data source is capable of supporting a complete Quranic Word Study experience.
+
+Please answer these questions with evidence from the implementation:
+
+1. Can the current API/dataset provide the exact occurrence count for every individual Quranic word?
+
+2. Can it provide the occurrence count for every Arabic root?
+
+3. Can it provide complete lexical explanations for every Quranic word?
+
+4. Can it provide complete morphological information for every Quranic word?
+
+5. Can it provide root letters and lemmas for every Quranic word?
+
+6. Can it consistently provide word-by-word English meanings for every word?
+
+7. If any of the above are not supported, explain exactly why.
+
+====================================================
+
+CURRENT PROBLEM
+
+The feature is inconsistent.
+
+Some words display:
+- Lexical explanation
+- Root letters
+- Lemma
+- Morphology
+- Occurrence count
+- Tafseer
+
+Other words display only some of these fields.
+
+Other words display almost nothing.
+
+I want you to determine whether this inconsistency is caused by:
+
+- Missing data in the dataset
+- API limitations
+- Lookup failures
+- Arabic normalization issues
+- Multiple datasets being mixed together
+- Or another technical reason
+
+====================================================
+
+IF THE DATASET IS INCOMPLETE
+
+If the current dataset cannot provide complete information for every Quranic word, then recommend a better architecture.
+
+The recommended solution should support:
+
+- Every Quranic word
+- Exact occurrence count
+- Root occurrence count
+- Root letters
+- Lemma
+- Morphology
+- Lexical explanation
+- Word meaning
+- Verse navigation
+- Verse tafseer
+
+Use reliable and well-known Quranic linguistic datasets where appropriate.
+
+====================================================
+
+FINAL REQUIREMENT
+
+After the audit, either:
+
+A) Fix the implementation so every Quranic word behaves consistently,
+
+OR
+
+B) Explain exactly why that is impossible with the current data source and implement the best available solution.
+
+Do not guess.
+
+Inspect the actual implementation and provide a technical explanation before making any changes.
