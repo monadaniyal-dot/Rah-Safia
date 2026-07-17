@@ -1,3 +1,6 @@
+// Daily Dua bookmarks — used by DailyInspiration component and BookmarksPage.
+// Separate from Supplications bookmarks (see supplications-bookmarks.ts).
+
 import { useState, useEffect, useCallback } from "react";
 
 export interface DuaBookmark {
@@ -11,7 +14,7 @@ export interface DuaBookmark {
 
 const STORAGE_KEY = "rah-e-safia:dua-bookmarks";
 
-function loadDuaBookmarks(): DuaBookmark[] {
+function loadBookmarks(): DuaBookmark[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -21,31 +24,31 @@ function loadDuaBookmarks(): DuaBookmark[] {
   }
 }
 
-function saveDuaBookmarks(bookmarks: DuaBookmark[]): void {
+function saveBookmarks(bookmarks: DuaBookmark[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
   } catch {
-    // Storage unavailable or full — fail silently
+    // Storage unavailable — fail silently
   }
 }
 
 export function useDuaBookmarks() {
-  const [duaBookmarks, setDuaBookmarks] = useState<DuaBookmark[]>(loadDuaBookmarks);
+  const [duaBookmarks, setDuaBookmarks] = useState<DuaBookmark[]>(loadBookmarks);
 
   useEffect(() => {
-    saveDuaBookmarks(duaBookmarks);
+    saveBookmarks(duaBookmarks);
   }, [duaBookmarks]);
 
   const toggleDuaBookmark = useCallback(
-    (dua: Omit<DuaBookmark, "timestamp">) => {
+    (item: Omit<DuaBookmark, "timestamp">) => {
       setDuaBookmarks((prev) => {
-        if (prev.some((b) => b.id === dua.id)) {
-          return prev.filter((b) => b.id !== dua.id);
+        if (prev.some((b) => b.id === item.id)) {
+          return prev.filter((b) => b.id !== item.id);
         }
-        return [{ ...dua, timestamp: Date.now() }, ...prev];
+        return [{ ...item, timestamp: Date.now() }, ...prev];
       });
     },
-    [],
+    []
   );
 
   const removeDuaBookmark = useCallback((id: string) => {
@@ -54,7 +57,7 @@ export function useDuaBookmarks() {
 
   const isDuaBookmarked = useCallback(
     (id: string): boolean => duaBookmarks.some((b) => b.id === id),
-    [duaBookmarks],
+    [duaBookmarks]
   );
 
   return { duaBookmarks, toggleDuaBookmark, removeDuaBookmark, isDuaBookmarked };

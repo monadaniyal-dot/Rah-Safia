@@ -10,6 +10,7 @@ import {
   Settings,
   Info,
   Repeat2,
+  HandHeart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -81,6 +82,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "التسبيح والذكر",
     icon: Repeat2,
     path: "/tasbeeh",
+  },
+  {
+    id: "supplications",
+    label: "Supplications",
+    arabicLabel: "الأدعية",
+    icon: HandHeart,
+    path: "/supplications",
   },
   {
     id: "bookmarks",
@@ -182,5 +190,15 @@ export const featureCards: FeatureCard[] = [
     colorClass: "from-teal-600 to-teal-900",
     iconBgClass: "bg-teal-500/20",
     path: "/tasbeeh",
+  },
+  {
+    id: "supplications",
+    icon: HandHeart,
+    arabicTitle: "أدعية من الكتاب والسنة",
+    title: "Supplications",
+    description: "Complete Dua Library — daily life, prayer, travel, family, and more",
+    colorClass: "from-rose-600 to-rose-900",
+    iconBgClass: "bg-rose-500/20",
+    path: "/supplications",
   },
 ];

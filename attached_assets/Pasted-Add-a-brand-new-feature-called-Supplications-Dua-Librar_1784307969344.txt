@@ -1,0 +1,152 @@
+Add a brand-new feature called "Supplications (Dua Library)" to Rah-e-Safia.
+
+This should be a complete Dua Library and MUST NOT replace the existing "Daily Dua" feature. The current Daily Dua should remain unchanged.
+
+Create a new module accessible from the Islamic Tools section called:
+
+🤲 Supplications
+
+The design must match the existing premium Islamic theme used throughout Rah-e-Safia.
+
+========================
+MAIN CATEGORIES
+========================
+
+Organize the duas into separate categories using beautiful cards.
+
+1. Morning & Evening
+- Morning Adhkar
+- Evening Adhkar
+
+2. Daily Life
+- Before Sleeping
+- After Waking Up
+- Before Eating
+- After Eating
+- Before Drinking
+- After Drinking
+- Before Wudu
+- After Wudu
+- Entering Bathroom
+- Leaving Bathroom
+- Entering Home
+- Leaving Home
+- Entering Mosque
+- Leaving Mosque
+- Wearing New Clothes
+- Looking in the Mirror
+
+3. Prayer
+- Before Salah
+- After Salah
+- Qunoot
+- Istikhara
+
+4. Travel
+- Beginning a Journey
+- Boarding a Vehicle
+- Returning Home
+- During Rain
+- During Storms
+
+5. Health & Protection
+- Dua for Sickness
+- Visiting the Sick
+- Protection from Evil Eye
+- Protection from Shaytan
+- Protection Before Sleeping
+- Protection for Children
+
+6. Forgiveness & Repentance
+- Sayyidul Istighfar
+- Common Istighfar
+- Repentance Duas
+
+7. Rizq & Success
+- Rizq
+- Debt
+- Anxiety
+- Stress
+- Sadness
+- Knowledge
+- Guidance
+- Ease in Difficulties
+- Success in Exams
+- Business Success
+
+8. Family
+- Parents
+- Children
+- Marriage
+- Spouse
+- Family Unity
+
+9. Special Occasions
+- Ramadan
+- Laylatul Qadr
+- Eid
+- Hajj
+- Umrah
+- Janazah
+
+========================
+EACH DUA PAGE
+========================
+
+Every dua must include:
+
+• Arabic text
+• Transliteration
+• English translation
+• Urdu translation
+• Short explanation
+• Authentic source/reference (Quran or Sahih Hadith wherever applicable)
+• Audio recitation
+• Copy button
+• Share button
+• Bookmark button
+• Adjustable Arabic font size
+
+========================
+SEARCH
+========================
+
+Include a search bar that searches by:
+
+Arabic
+English
+Urdu
+Transliteration
+Category
+
+========================
+FAVOURITES
+========================
+
+Allow users to bookmark duas.
+
+Create a dedicated "Favourite Duas" page.
+
+========================
+OFFLINE SUPPORT
+========================
+
+Store the dua database locally so users can access it without internet.
+
+========================
+UI
+========================
+
+Use premium Islamic styling.
+
+Each category should have its own icon.
+
+Use smooth animations.
+
+Support both Light and Dark themes.
+
+Ensure the interface is fully responsive for mobile, tablet, and desktop.
+
+Do not modify or remove any existing Rah-e-Safia features.
+
+Only add this new Supplications module while preserving the current architecture and design consistency.

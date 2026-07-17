@@ -29,6 +29,7 @@ const _about         = import("@/pages/AboutPage");
 const _privacy       = import("@/pages/PrivacyPolicyPage");
 const _terms         = import("@/pages/TermsOfUsePage");
 const _tasbeeh       = import("@/pages/TasbeehPage");
+const _supplications = import("@/pages/SupplicationsPage");
 
 const HomePage          = lazy(() => _home);
 const PrayerTimesPage   = lazy(() => _prayer);
@@ -44,7 +45,8 @@ const SettingsPage      = lazy(() => _settings);
 const AboutPage         = lazy(() => _about);
 const PrivacyPolicyPage = lazy(() => _privacy);
 const TermsOfUsePage    = lazy(() => _terms);
-const TasbeehPage       = lazy(() => _tasbeeh);
+const TasbeehPage          = lazy(() => _tasbeeh);
+const SupplicationsPage    = lazy(() => _supplications);
 
 function PageLoader() {
   return (
@@ -82,6 +84,7 @@ export default function App() {
               <Route path="/tafseer/surah/:number" component={TafseerSurahPage} />
               <Route path="/tafseer"               component={TafseerPage} />
               <Route path="/tasbeeh"               component={TasbeehPage} />
+              <Route path="/supplications"         component={SupplicationsPage} />
               <Route path="/settings"              component={SettingsPage} />
               <Route path="/about"                 component={AboutPage} />
               <Route path="/privacy"               component={PrivacyPolicyPage} />
