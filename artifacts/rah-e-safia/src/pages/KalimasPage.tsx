@@ -129,6 +129,13 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
 
 // ─── HOME — Kalima card ────────────────────────────────────────────────────────
 
+/** Returns first `n` whitespace-delimited tokens of an Arabic string, with a trailing ellipsis if truncated. */
+function arabicPreview(text: string, words = 6): string {
+  const tokens = text.trim().split(/\s+/);
+  if (tokens.length <= words) return text;
+  return tokens.slice(0, words).join(" ") + "…";
+}
+
 const KalimaHomeCard = memo(function KalimaHomeCard({
   kalima,
   onSelect,
@@ -138,6 +145,7 @@ const KalimaHomeCard = memo(function KalimaHomeCard({
 }) {
   const colors = KALIMA_COLOR_MAP[kalima.color];
   const handleClick = useCallback(() => onSelect(kalima.number - 1), [kalima.number, onSelect]);
+  const preview = arabicPreview(kalima.arabic, 6);
   return (
     <motion.button
       onClick={handleClick}
@@ -156,8 +164,8 @@ const KalimaHomeCard = memo(function KalimaHomeCard({
               {kalima.subtitle}
             </span>
           </div>
-          <p className="text-[11px] font-arabic mt-1.5 text-foreground/70 line-clamp-1 text-right" dir="rtl" lang="ar">
-            {kalima.arabic}
+          <p className="text-[11px] font-arabic mt-1.5 text-foreground/70 text-right leading-snug" dir="rtl" lang="ar">
+            {preview}
           </p>
         </div>
         <ChevronRight className={`w-4 h-4 ${colors.accent} shrink-0 mt-1`} strokeWidth={2} />
