@@ -1,0 +1,79 @@
+Add a new feature in Rah-e-Safia app called "Tasbeeh & Dhikr".
+
+This should NOT be a digital counting tasbeeh. It should be a complete Dhikr/Tasbeeh learning and reading section containing famous Islamic tasbeehs, adhkar, and their meanings.
+
+Create a beautiful Islamic-themed UI consistent with the existing Rah-e-Safia design.
+
+Structure it with multiple categories/sections instead of one single list:
+
+Main Section:
+📿 Tasbeeh & Dhikr
+
+Categories:
+
+1. Daily Tasbeehs
+Include:
+- SubhanAllah (سُبْحَانَ اللّٰهُ)
+- Alhamdulillah (الْحَمْدُ لِلّٰهِ)
+- Allahu Akbar (اللّٰهُ أَكْبَرُ)
+- La ilaha illallah (لَا إِلٰهَ إِلَّا اللّٰهُ)
+- Astaghfirullah (أَسْتَغْفِرُ اللّٰهَ)
+- SubhanAllahi wa bihamdihi
+- La hawla wa la quwwata illa billah
+
+2. Morning Adhkar (اذكار الصباح)
+Create a dedicated section for authentic morning remembrance.
+
+3. Evening Adhkar (اذكار المساء)
+Create a dedicated section for evening remembrance.
+
+4. Istighfar & Forgiveness
+Include:
+- Sayyidul Istighfar
+- Common Istighfar duas
+- Translations and meanings
+
+5. Durood & Salawat
+Include:
+- Durood Ibrahim
+- Famous Durood Shareefs
+- Translation
+
+6. Protection & Hardship Dhikr
+Include:
+- Hasbunallahu wa ni'mal wakeel
+- Ayat related remembrance
+- Dhikr for difficulties and worries
+
+7. Names of Allah (Asma ul Husna)
+Create a section showing:
+- 99 Names of Allah
+- Arabic name
+- Transliteration
+- Meaning
+- Short explanation
+
+8. Quranic Tasbeehs
+Include dhikr phrases mentioned in Quran with references.
+
+Every Tasbeeh/Dhikr item should have:
+
+- Arabic text
+- Transliteration
+- English translation
+- Urdu translation
+- Short explanation/meaning
+- Authentic reference where available
+- Bookmark/favourite option
+- Share option
+
+UI requirements:
+- Use cards for each category.
+- Use elegant Islamic styling matching the current app.
+- Add search functionality to find any Dhikr quickly.
+- Add bookmark storage so users can save favourite Tasbeehs.
+- Keep the design mobile friendly.
+- Add this feature inside the main Islamic Tools section alongside existing features like Quran, Hadith, Tafseer, Prayer Times, and Qibla Finder.
+
+Do not remove or modify any existing features.
+Only add this new module while maintaining the current app architecture and design system.

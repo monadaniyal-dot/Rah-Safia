@@ -9,6 +9,7 @@ import {
   Sparkles,
   Settings,
   Info,
+  Repeat2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -73,6 +74,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "أسماء الله الحسنى",
     icon: Sparkles,
     path: "/asmaul-husna",
+  },
+  {
+    id: "tasbeeh",
+    label: "Tasbeeh & Dhikr",
+    arabicLabel: "التسبيح والذكر",
+    icon: Repeat2,
+    path: "/tasbeeh",
   },
   {
     id: "bookmarks",
@@ -164,5 +172,15 @@ export const featureCards: FeatureCard[] = [
     colorClass: "from-violet-600 to-violet-900",
     iconBgClass: "bg-violet-500/20",
     path: "/asmaul-husna",
+  },
+  {
+    id: "tasbeeh",
+    icon: Repeat2,
+    arabicTitle: "التسبيح والذكر",
+    title: "Tasbeeh & Dhikr",
+    description: "Daily tasbeehs, morning & evening adhkar, durood, and more",
+    colorClass: "from-teal-600 to-teal-900",
+    iconBgClass: "bg-teal-500/20",
+    path: "/tasbeeh",
   },
 ];
