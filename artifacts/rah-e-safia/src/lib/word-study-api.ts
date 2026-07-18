@@ -261,38 +261,78 @@ export function formatMorphology(entry: QACEntry): string {
   return parts.length ? parts.join(", ") : "Grammatical particle";
 }
 
+// ─── Concurrency queue ────────────────────────────────────────────────────────
+// Limits simultaneous in-flight requests to `maxConcurrent` so that opening
+// many occurrence cards at once doesn't flood the network.
+
+function createConcurrencyQueue(maxConcurrent: number) {
+  let active = 0;
+  const queue: Array<() => void> = [];
+
+  function next() {
+    if (active >= maxConcurrent || queue.length === 0) return;
+    active++;
+    const run = queue.shift()!;
+    run();
+  }
+
+  return function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      queue.push(() => {
+        task()
+          .then(resolve, reject)
+          .finally(() => { active--; next(); });
+      });
+      next();
+    });
+  };
+}
+
+const verseWordsFetchQueue = createConcurrencyQueue(4);
+
 // ─── Verse word data (Quran.com) ───────────────────────────────────────────────
 
 const verseWordsCache = new Map<string, VerseWord[]>();
+// In-flight promise cache: prevents duplicate concurrent fetches for the same key
+const verseWordsInFlight = new Map<string, Promise<VerseWord[]>>();
 
-export async function fetchVerseWords(
+export function fetchVerseWords(
   surah: number,
   ayah: number,
 ): Promise<VerseWord[]> {
   const key = `${surah}:${ayah}`;
-  if (verseWordsCache.has(key)) return verseWordsCache.get(key)!;
+  if (verseWordsCache.has(key)) return Promise.resolve(verseWordsCache.get(key)!);
+  if (verseWordsInFlight.has(key)) return verseWordsInFlight.get(key)!;
 
-  const url = `${QURANCOM}/verses/by_key/${surah}:${ayah}?words=true&word_fields=text_uthmani,transliteration&translation_id=131`;
-  const res = await fetchWithTimeout(url, { timeoutMs: 8000 });
-  const data = await res.json() as { verse: { words: Array<{
-    id: number; position: number; audio: { url: string } | null;
-    text_uthmani: string; char_type_name: string;
-    translation: { text: string }; transliteration: { text: string } | null;
-  }> } };
-  const verse = data.verse;
+  const promise = verseWordsFetchQueue(async () => {
+    // Re-check cache after waiting in the queue
+    if (verseWordsCache.has(key)) return verseWordsCache.get(key)!;
 
-  const words: VerseWord[] = verse.words.map((w) => ({
-    id: w.id,
-    position: w.position,
-    audioUrl: w.audio?.url ?? "",
-    textUthmani: w.text_uthmani ?? "",
-    charType: w.char_type_name ?? "word",
-    translation: w.translation?.text ?? "",
-    transliteration: w.transliteration?.text ?? "",
-  }));
+    const url = `${QURANCOM}/verses/by_key/${surah}:${ayah}?words=true&word_fields=text_uthmani,transliteration&translation_id=131`;
+    const res = await fetchWithTimeout(url, { timeoutMs: 8000 });
+    const data = await res.json() as { verse: { words: Array<{
+      id: number; position: number; audio: { url: string } | null;
+      text_uthmani: string; char_type_name: string;
+      translation: { text: string }; transliteration: { text: string } | null;
+    }> } };
+    const verse = data.verse;
 
-  verseWordsCache.set(key, words);
-  return words;
+    const words: VerseWord[] = verse.words.map((w) => ({
+      id: w.id,
+      position: w.position,
+      audioUrl: w.audio?.url ?? "",
+      textUthmani: w.text_uthmani ?? "",
+      charType: w.char_type_name ?? "word",
+      translation: w.translation?.text ?? "",
+      transliteration: w.transliteration?.text ?? "",
+    }));
+
+    verseWordsCache.set(key, words);
+    return words;
+  }).finally(() => verseWordsInFlight.delete(key));
+
+  verseWordsInFlight.set(key, promise as Promise<VerseWord[]>);
+  return promise as Promise<VerseWord[]>;
 }
 
 // ─── Tafseer (Ibn Kathir via quran.com) ───────────────────────────────────────
