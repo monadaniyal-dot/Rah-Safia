@@ -236,6 +236,16 @@ const OccurrenceCard = memo(function OccurrenceCard({
   // Build the Arabic snippet: only "word" tokens, highlight the one at wordPos
   const realWords = verseWords?.filter((w) => w.charType === "word") ?? null;
 
+  // Build the English translation by joining word-level translations
+  const translationFull = realWords
+    ? realWords.map((w) => w.translation).filter(Boolean).join(" ")
+    : null;
+  const translation = translationFull
+    ? translationFull.length > 80
+      ? translationFull.slice(0, 80).trimEnd() + "…"
+      : translationFull
+    : null;
+
   return (
     <motion.button
       ref={cardRef}
@@ -289,6 +299,13 @@ const OccurrenceCard = memo(function OccurrenceCard({
               </span>
             );
           })}
+        </p>
+      )}
+
+      {/* English translation — one line below the Arabic snippet */}
+      {translation && (
+        <p className="mt-1 text-left text-[11px] text-muted-foreground/70 leading-snug italic">
+          {translation}
         </p>
       )}
     </motion.button>
