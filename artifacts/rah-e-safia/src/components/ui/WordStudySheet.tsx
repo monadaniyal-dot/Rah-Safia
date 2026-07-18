@@ -43,6 +43,7 @@ import {
   Shapes,
   ScrollText,
   ExternalLink,
+  Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -787,29 +788,57 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
 
               {/* ── Root meaning ── */}
               {!qacLoading && qacRoot && (
-                <div className="rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 space-y-1">
-                  <p className="text-[9px] uppercase tracking-widest font-bold text-muted-foreground/60">
-                    Root meaning
-                  </p>
+                <ExpandableSection
+                  icon={Languages}
+                  title="Root Meaning"
+                  defaultOpen
+                >
+                  {/* Root identifier row */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span
+                      className="font-arabic text-2xl text-emerald-600 dark:text-emerald-400 leading-normal"
+                      dir="rtl"
+                      lang="ar"
+                    >
+                      {qacRoot}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/50 mt-1">
+                      Arabic root
+                    </span>
+                  </div>
+
                   {qacRootMeaning ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground/85 leading-snug">
-                        {qacRootMeaning.en}
-                      </p>
-                      {qacRootMeaning.ur && (
-                        <p
-                          className="text-xs text-muted-foreground font-arabic leading-relaxed"
-                          dir="rtl"
-                          lang="ur"
-                        >
-                          {qacRootMeaning.ur}
+                    <div className="space-y-3">
+                      {/* English meaning */}
+                      <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/15 px-3 py-2.5">
+                        <p className="text-[9px] uppercase tracking-widest font-bold text-emerald-600/70 dark:text-emerald-400/70 mb-1">
+                          English
                         </p>
+                        <p className="text-sm font-medium text-foreground/85 leading-snug">
+                          {qacRootMeaning.en}
+                        </p>
+                      </div>
+
+                      {/* Urdu meaning */}
+                      {qacRootMeaning.ur && (
+                        <div className="rounded-xl bg-amber-500/8 border border-amber-500/15 px-3 py-2.5">
+                          <p className="text-[9px] uppercase tracking-widest font-bold text-amber-600/70 dark:text-amber-400/70 mb-1">
+                            اردو
+                          </p>
+                          <p
+                            className="text-sm font-arabic text-foreground/85 leading-relaxed text-right"
+                            dir="rtl"
+                            lang="ur"
+                          >
+                            {qacRootMeaning.ur}
+                          </p>
+                        </div>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground/60 italic">Not available</p>
+                    <UnavailableNotice message="Root meaning not found in the lexical index for this root." />
                   )}
-                </div>
+                </ExpandableSection>
               )}
 
               {/* ── Morphological analysis ── */}
