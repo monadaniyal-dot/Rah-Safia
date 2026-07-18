@@ -32,6 +32,7 @@ const _tasbeeh       = import("@/pages/TasbeehPage");
 const _supplications = import("@/pages/SupplicationsPage");
 const _kalimas       = import("@/pages/KalimasPage");
 const _wordMeanings  = import("@/pages/WordMeaningsPage");
+const _rootSearch    = import("@/pages/RootMeaningSearchPage");
 
 const HomePage          = lazy(() => _home);
 const PrayerTimesPage   = lazy(() => _prayer);
@@ -51,6 +52,7 @@ const TasbeehPage          = lazy(() => _tasbeeh);
 const SupplicationsPage    = lazy(() => _supplications);
 const KalimasPage          = lazy(() => _kalimas);
 const WordMeaningsPage     = lazy(() => _wordMeanings);
+const RootMeaningSearchPage = lazy(() => _rootSearch);
 
 function PageLoader() {
   return (
@@ -91,6 +93,7 @@ export default function App() {
               <Route path="/supplications"         component={SupplicationsPage} />
               <Route path="/kalimas"               component={KalimasPage} />
               <Route path="/word-meanings"         component={WordMeaningsPage} />
+              <Route path="/root-search"           component={RootMeaningSearchPage} />
               <Route path="/settings"              component={SettingsPage} />
               <Route path="/about"                 component={AboutPage} />
               <Route path="/privacy"               component={PrivacyPolicyPage} />

@@ -1012,3 +1012,68 @@ export function lookupRootMeaning(root: string | null | undefined): RootMeaning 
   const key = normalize(root);
   return ROOT_MEANINGS[key] ?? null;
 }
+
+// ─── Reverse lookup: English keyword → matching roots ──────────────────────────
+
+export interface RootSearchResult {
+  /** Arabic root key (QAC-normalized) */
+  root: string;
+  /** English meaning of the root */
+  meaning: RootMeaning;
+  /**
+   * Relevance score (higher = better match).
+   * 2 = whole-word match in meaning string, 1 = substring match.
+   */
+  score: number;
+}
+
+/** Escapes a string for use inside a RegExp constructor. */
+function escapeRegExp(s: string): string {
+  // Use a callback to avoid any "$"-based replacement patterns in the output.
+  return s.replace(/[.*+?^$()|[\]\\]/g, (ch) => "\\" + ch);
+}
+
+/**
+ * Search the root-meanings table by English keyword(s).
+ *
+ * - Splits the query on whitespace; every term must match (AND logic).
+ * - Whole-word matches rank above substring matches.
+ * - Returns at most `limit` results, sorted by score then by root key.
+ *
+ * Purely synchronous — no network required.
+ */
+export function searchRootsByMeaning(
+  query: string,
+  limit = 50,
+): RootSearchResult[] {
+  const terms = query
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (terms.length === 0) return [];
+
+  const results: RootSearchResult[] = [];
+
+  for (const [root, meaning] of Object.entries(ROOT_MEANINGS)) {
+    const haystack = meaning.en.toLowerCase();
+
+    // Every term must be present somewhere in the meaning string (AND logic)
+    const allMatch = terms.every((t) => haystack.includes(t));
+    if (!allMatch) continue;
+
+    // Score: +2 per whole-word hit, +1 per substring hit
+    let score = 0;
+    for (const term of terms) {
+      const wordBoundaryRe = new RegExp("\\b" + escapeRegExp(term) + "\\b");
+      score += wordBoundaryRe.test(haystack) ? 2 : 1;
+    }
+
+    results.push({ root, meaning, score });
+  }
+
+  // Sort: descending score, then ascending root key for stability
+  results.sort((a, b) => b.score - a.score || a.root.localeCompare(b.root));
+  return results.slice(0, limit);
+}
