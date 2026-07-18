@@ -186,6 +186,8 @@ function ExpandableSection({
 
 // ─── Occurrence card (QAC-based) ───────────────────────────────────────────────
 // Receives a [surahNum, ayahNum, wordPos] tuple from the root index.
+// Lazily fetches the verse words when the card scrolls into view and renders
+// a highlighted Arabic snippet showing the target word in context.
 
 const OccurrenceCard = memo(function OccurrenceCard({
   pos,
@@ -198,7 +200,32 @@ const OccurrenceCard = memo(function OccurrenceCard({
   onNavigate: (surah: number, ayah: number) => void;
   onClose: () => void;
 }) {
-  const [surahNum, ayahNum] = pos;
+  const [surahNum, ayahNum, wordPos] = pos;
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [verseWords, setVerseWords] = useState<VerseWord[] | null>(null);
+
+  // Trigger fetch only when card scrolls into view
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    fetchVerseWords(surahNum, ayahNum)
+      .then((words) => { if (!cancelled) setVerseWords(words); })
+      .catch(() => { /* snippet is non-critical; card still works without it */ });
+    return () => { cancelled = true; };
+  }, [visible, surahNum, ayahNum]);
+
   const handleClick = useCallback(() => {
     onNavigate(surahNum, ayahNum);
     onClose();
@@ -206,8 +233,12 @@ const OccurrenceCard = memo(function OccurrenceCard({
 
   const surahInfo = surahs.find((s) => s.number === surahNum);
 
+  // Build the Arabic snippet: only "word" tokens, highlight the one at wordPos
+  const realWords = verseWords?.filter((w) => w.charType === "word") ?? null;
+
   return (
     <motion.button
+      ref={cardRef}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.025 } }}
       onClick={handleClick}
@@ -234,6 +265,32 @@ const OccurrenceCard = memo(function OccurrenceCard({
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={2} />
       </div>
+
+      {/* Arabic verse snippet — shown once words are loaded */}
+      {realWords && realWords.length > 0 && (
+        <p
+          className="mt-2 text-right font-arabic text-sm leading-[1.9] text-foreground/75 line-clamp-2"
+          dir="rtl"
+          lang="ar"
+        >
+          {realWords.map((w) => {
+            const isTarget = w.position === wordPos;
+            return (
+              <span
+                key={w.id}
+                className={cn(
+                  "mx-[1px]",
+                  isTarget
+                    ? "text-primary font-bold underline decoration-primary/50 decoration-dotted underline-offset-[3px]"
+                    : "text-foreground/70"
+                )}
+              >
+                {w.textUthmani}
+              </span>
+            );
+          })}
+        </p>
+      )}
     </motion.button>
   );
 });
