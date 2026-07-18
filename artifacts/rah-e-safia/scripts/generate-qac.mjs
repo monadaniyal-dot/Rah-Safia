@@ -173,6 +173,40 @@ try {
   console.log(`[QAC] qac-morphology.json  ${kb(morphJson)}`);
   console.log(`[QAC] qac-roots.json       ${kb(rootsJson)}`);
   console.log("[QAC] Done. Required attribution: Quranic Arabic Corpus · corpus.quran.com");
+
+  // ─── Post-write integrity check ──────────────────────────────────────────────
+  // Expected baselines (conservative lower bounds):
+  //   morphology ≥ 77 000 word tokens  (actual ~77 430)
+  //   roots      ≥  1 800 distinct roots (actual ~1 840)
+  const MIN_MORPH = 70_000;
+  const MIN_ROOTS = 1_600;
+  const morphCount = Object.keys(morph).length;
+  const rootsCount = Object.keys(roots).length;
+
+  let integrityOk = true;
+  if (morphCount < MIN_MORPH) {
+    console.warn(
+      `[QAC] WARNING: morphology has only ${morphCount.toLocaleString()} entries — ` +
+      `expected ≥ ${MIN_MORPH.toLocaleString()}. The upstream format may have changed.`
+    );
+    integrityOk = false;
+  }
+  if (rootsCount < MIN_ROOTS) {
+    console.warn(
+      `[QAC] WARNING: roots index has only ${rootsCount.toLocaleString()} entries — ` +
+      `expected ≥ ${MIN_ROOTS.toLocaleString()}. The upstream format may have changed.`
+    );
+    integrityOk = false;
+  }
+  if (integrityOk) {
+    console.log(
+      `[QAC] Integrity OK — ${morphCount.toLocaleString()} morphology entries, ` +
+      `${rootsCount.toLocaleString()} roots.`
+    );
+  } else {
+    console.warn("[QAC] Integrity check failed. Run verify-qac for details.");
+    console.warn("[QAC] See public/data/README.md for regeneration instructions.");
+  }
 } catch (err) {
   // Non-fatal: Vite starts normally; Word Study will show "loading" indefinitely
   // until the data files are generated on the next restart.
