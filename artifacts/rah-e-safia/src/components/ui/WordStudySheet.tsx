@@ -53,6 +53,7 @@ import {
   formatMorphology,
   stripDiacritics,
   WORD_AUDIO_BASE,
+  POS_LABELS,
   type VerseWord,
   type TafseerResult,
   type QACEntry,
@@ -298,6 +299,12 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
   const [loadingWord, setLoadingWord] = useState(false);
   const [wordError, setWordError]     = useState(false);
 
+  // ── Canonical 1-based word position (from Quran.com match) ─────────────────
+  // Kept in state so the bookmark handler can record the corpus-aligned position
+  // rather than the raw rendered wordIndex, which diverges for basmala-stripped
+  // first ayahs.
+  const [canonicalPos, setCanonicalPos] = useState<number>(1);
+
   // ── QAC morphology data ─────────────────────────────────────────────────────
   const [qacEntry, setQacEntry]       = useState<QACEntry | null>(null);
   const [qacLoading, setQacLoading]   = useState(false);
@@ -357,9 +364,18 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
           null;
         if (!cancelled) { setWordData(match); setLoadingWord(false); }
         // Canonical position from Quran.com/Tanzil tokenization — matches QAC index
-        if (match?.position) canonicalWordPos = match.position;
+        if (match?.position) {
+          canonicalWordPos = match.position;
+          if (!cancelled) setCanonicalPos(match.position);
+        } else {
+          if (!cancelled) setCanonicalPos(trigger.wordIndex + 1);
+        }
       } catch {
-        if (!cancelled) { setWordError(true); setLoadingWord(false); }
+        if (!cancelled) {
+          setWordError(true);
+          setLoadingWord(false);
+          setCanonicalPos(trigger.wordIndex + 1);
+        }
         // Non-fatal: QAC lookup continues with the index-based fallback
       }
 
@@ -432,9 +448,9 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
       surahNum: trigger.surahNum,
       surahName: trigger.surahName,
       ayahNum: trigger.ayahNum,
-      wordPosition: trigger.wordIndex + 1,
+      wordPosition: canonicalPos, // Quran.com-aligned position, not raw rendered index
     });
-  }, [trigger, bookmarkId, displayArabic, displayTranslit, displayMeaning, toggleBookmark]);
+  }, [trigger, bookmarkId, displayArabic, displayTranslit, displayMeaning, canonicalPos, toggleBookmark]);
 
   // ── Share text ───────────────────────────────────────────────────────────────
   const getShareText = useCallback(() => {
@@ -478,21 +494,17 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
     : null;
 
   // ── QAC-derived values ───────────────────────────────────────────────────────
-  const qacRoot   = qacEntry?.r ?? null;
-  const qacLemma  = qacEntry?.l ?? null;
-  const qacPOS    = qacEntry?.p
-    ? (qacEntry.p === "N" ? "Noun"
-     : qacEntry.p === "V" ? "Verb"
-     : qacEntry.p === "ADJ" ? "Adjective"
-     : qacEntry.p === "PN" ? "Proper Noun"
-     : qacEntry.p === "PRON" ? "Pronoun"
-     : qacEntry.p === "P" ? "Preposition"
-     : qacEntry.p === "CONJ" ? "Conjunction"
-     : qacEntry.p)
+  const qacRoot  = qacEntry?.r ?? null;
+  const qacLemma = qacEntry?.l ?? null;
+  // Use the full POS_LABELS map so all 30+ QAC part-of-speech tags render
+  // as human-readable text rather than falling through to the raw code.
+  const qacPOS   = qacEntry?.p
+    ? (POS_LABELS[qacEntry.p] ?? qacEntry.p)
     : null;
 
-  // Limit occurrence list to 50 items
+  // Limit occurrence list to 50 items; keep the full count for the header
   const occPositions: Array<[number, number, number]> = rootOccs?.w.slice(0, 50) ?? [];
+  const occTotalCount = rootOccs?.c ?? 0;
 
   return (
     <AnimatePresence>
@@ -609,8 +621,11 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
               </div>
             </div>
 
-            {/* Scrollable content */}
-            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+            {/* Scrollable content — extra bottom padding accounts for iOS home bar */}
+            <div
+              className="overflow-y-auto flex-1 px-4 py-4 space-y-4"
+              style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            >
 
               {/* ── Hero: Arabic word + transliteration + English ── */}
               <div className="text-center py-2">
@@ -802,8 +817,8 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
                   <div className="space-y-3">
                     <p className="text-xs text-muted-foreground">
                       Root <span className="font-arabic text-sm text-foreground" dir="rtl" lang="ar">{qacRoot}</span>{" "}
-                      appears <strong className="text-foreground">{rootOccs.c.toLocaleString()}</strong> times across the Quran.
-                      {rootOccs.w.length > 50 && " Showing first 50."}
+                      appears <strong className="text-foreground">{occTotalCount.toLocaleString()}</strong> times across the Quran.
+                      {occTotalCount > 50 && ` Showing first 50 of ${occTotalCount.toLocaleString()}.`}
                     </p>
                     <div className="space-y-2">
                       {occPositions.map((pos, i) => (

@@ -167,23 +167,46 @@ export async function lookupRootOccurrences(root: string): Promise<QACRootEntry 
 
 // ─── Morphology formatting ─────────────────────────────────────────────────────
 
-const POS_LABELS: Record<string, string> = {
-  N: "Noun", V: "Verb", ADJ: "Adjective", PN: "Proper Noun",
-  PRON: "Pronoun", P: "Preposition", CONJ: "Conjunction",
-  REL: "Relative Pronoun", DEM: "Demonstrative",
-  NEG: "Negative Particle", CERT: "Certainty Particle",
-  COND: "Conditional Particle", EXP: "Exceptive Particle",
-  INC: "Inceptive Particle", INT: "Interpretation Particle",
-  INTG: "Interrogative Particle", AMD: "Amendment Particle",
-  ANS: "Answer Particle", AVR: "Aversion Particle",
-  EXH: "Exhortation Particle", EXL: "Exhortation Particle",
-  FUT: "Future Particle", IMPN: "Imperative Nominal",
-  INL: "Quranic Initial", LOC: "Locative Adverb",
-  PRO: "Prohibition Particle", PREV: "Preventive Particle",
-  RES: "Response Particle", RET: "Retraction Particle",
-  SUB: "Subordinating Conjunction", SUP: "Supplemental Particle",
-  SUR: "Surprise Particle", T: "Time Adverb",
-  STEM: "Particle",
+// Exported so WordStudySheet can use the full label set for the POS pill.
+export const POS_LABELS: Record<string, string> = {
+  // Content-word classes
+  N:    "Noun",
+  V:    "Verb",
+  ADJ:  "Adjective",
+  PN:   "Proper Noun",
+  // Pronoun / demonstrative / relative
+  PRON: "Pronoun",
+  DEM:  "Demonstrative",
+  REL:  "Relative Pronoun",
+  // Particles — functional
+  ACC:  "Accusative Particle",   // sisters of inna: إنَّ أنَّ لعلَّ كأنَّ لكنَّ
+  P:    "Preposition",
+  CONJ: "Conjunction",
+  SUB:  "Subordinating Conjunction",
+  NEG:  "Negative Particle",
+  PRO:  "Prohibition Particle",
+  PREV: "Preventive Particle",
+  FUT:  "Future Particle",
+  CERT: "Certainty Particle",
+  COND: "Conditional Particle",
+  EXP:  "Exceptive Particle",
+  INC:  "Inceptive Particle",
+  INT:  "Interpretation Particle",
+  INTG: "Interrogative Particle",
+  AMD:  "Amendment Particle",
+  ANS:  "Answer Particle",
+  AVR:  "Aversion Particle",
+  EXH:  "Exhortation Particle",  // لولا (why not)
+  EXL:  "Presentative Particle", // أما (as for, indeed)
+  RES:  "Response Particle",
+  RET:  "Retraction Particle",
+  SUP:  "Supplemental Particle",
+  SUR:  "Surprise Particle",
+  // Adverbs / initials
+  LOC:  "Locative Adverb",
+  T:    "Time Adverb",
+  INL:  "Quranic Initial",       // huroof al-muqatta'at — no root by design
+  IMPN: "Imperative Nominal",
 };
 
 const GENDER_LABELS: Record<string, string>  = { M: "masculine", F: "feminine" };
