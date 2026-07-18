@@ -61,6 +61,7 @@ import {
 } from "@/lib/word-study-api";
 import { useWordBookmarks } from "@/lib/word-bookmarks";
 import { surahs } from "@/lib/quran-data";
+import { lookupRootMeaning } from "@/lib/qac-root-meanings";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -494,11 +495,12 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
     : null;
 
   // ── QAC-derived values ───────────────────────────────────────────────────────
-  const qacRoot  = qacEntry?.r ?? null;
-  const qacLemma = qacEntry?.l ?? null;
+  const qacRoot        = qacEntry?.r ?? null;
+  const qacLemma       = qacEntry?.l ?? null;
+  const qacRootMeaning = lookupRootMeaning(qacRoot);
   // Use the full POS_LABELS map so all 30+ QAC part-of-speech tags render
   // as human-readable text rather than falling through to the raw code.
-  const qacPOS   = qacEntry?.p
+  const qacPOS         = qacEntry?.p
     ? (POS_LABELS[qacEntry.p] ?? qacEntry.p)
     : null;
 
@@ -708,6 +710,33 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
                   />
                 )}
               </div>
+
+              {/* ── Root meaning ── */}
+              {!qacLoading && qacRoot && (
+                <div className="rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 space-y-1">
+                  <p className="text-[9px] uppercase tracking-widest font-bold text-muted-foreground/60">
+                    Root meaning
+                  </p>
+                  {qacRootMeaning ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground/85 leading-snug">
+                        {qacRootMeaning.en}
+                      </p>
+                      {qacRootMeaning.ur && (
+                        <p
+                          className="text-xs text-muted-foreground font-arabic leading-relaxed"
+                          dir="rtl"
+                          lang="ur"
+                        >
+                          {qacRootMeaning.ur}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground/60 italic">Not available</p>
+                  )}
+                </div>
+              )}
 
               {/* ── Morphological analysis ── */}
               <ExpandableSection
