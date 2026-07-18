@@ -29,6 +29,7 @@ import {
 } from "@/lib/reading-progress";
 import { useLongPress } from "@/hooks/useLongPress";
 import WordStudySheet, { type WordStudyTrigger } from "@/components/ui/WordStudySheet";
+import { preloadQACData } from "@/lib/word-study-api";
 
 function langToMode(lang: string): TranslationMode {
   switch (lang) {
@@ -475,6 +476,9 @@ export default function SurahPage() {
   // Container ref for IntersectionObserver — scoped to the ayah list, avoids
   // a full document.querySelectorAll scan on every ayah-list render.
   const ayahListRef = useRef<HTMLDivElement>(null);
+
+  // ── Preload QAC data files so they are warm before first long-press ──────
+  useEffect(() => { preloadQACData(); }, []);
 
   // ── Load surah data ──────────────────────────────────────────────────────
   // ── Word study callbacks ─────────────────────────────────────────────────

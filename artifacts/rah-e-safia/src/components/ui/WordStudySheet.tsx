@@ -1,25 +1,20 @@
 /**
  * WordStudySheet — Quranic Word Study bottom sheet.
  *
- * Unified data model: every word always renders the same 14-field layout.
- * If a field cannot be populated, a consistent "Not available" notice is shown
- * in-place rather than hiding the section entirely.
+ * Data layer powered by the Quranic Arabic Corpus (QAC) v0.4:
+ *   - Morphological data: root, lemma, POS, gender, number, case, aspect, etc.
+ *   - Root occurrence index: exact token count and all positions in the Quran.
  *
- * Section order (per spec):
- *  1  Arabic word                 — hero
- *  2  Transliteration             — hero
- *  3  English meaning             — hero
- *  4  Urdu meaning                — pill
- *  5  Root letters                — pill
- *  6  Lemma                       — pill
- *  7  Morphological information   — expandable section
- *  8  Lexical explanation         — expandable section
- *  9  Root meaning                — pill
- * 10  Exact occurrence count      — badge in occurrences header
- * 11  Root occurrence count       — note inside occurrences section
- * 12  Verse list                  — occurrences section body
- * 13  Navigation                  — occurrence card tap
- * 14  Tafseer                     — expandable section
+ * Attribution (required by QAC license):
+ *   Quranic Arabic Corpus · corpus.quran.com · © 2011 Kais Dukes, GNU GPL
+ *
+ * Section order:
+ *  1  Arabic word + transliteration + English meaning  — hero
+ *  2  Root · Lemma · POS pills
+ *  3  Morphological analysis                           — expandable
+ *  4  Lexical explanation (from Quran.com gloss)       — expandable
+ *  5  Occurrences (root-based, exact from corpus)      — expandable
+ *  6  Tafseer (Ibn Kathir)                             — expandable
  */
 
 import {
@@ -44,24 +39,24 @@ import {
   Loader2,
   AlertCircle,
   BookOpen,
-  Hash,
   Info,
   Shapes,
   ScrollText,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   fetchVerseWords,
-  fetchWordOccurrences,
   fetchTafseer,
-  lookupLexiconFull,
-  deriveMorphNote,
+  lookupWordMorphology,
+  lookupRootOccurrences,
+  formatMorphology,
   stripDiacritics,
   WORD_AUDIO_BASE,
   type VerseWord,
-  type WordOccurrence,
   type TafseerResult,
-  type LexiconMatch,
+  type QACEntry,
+  type QACRootEntry,
 } from "@/lib/word-study-api";
 import { useWordBookmarks } from "@/lib/word-bookmarks";
 import { surahs } from "@/lib/quran-data";
@@ -92,11 +87,13 @@ function Pill({
   value,
   color = "default",
   unavailable = false,
+  arabicValue = false,
 }: {
   label: string;
   value: string;
   color?: "default" | "emerald" | "amber" | "sky" | "violet";
   unavailable?: boolean;
+  arabicValue?: boolean;
 }) {
   const colors = {
     default: "bg-secondary/70 text-foreground/80",
@@ -108,10 +105,15 @@ function Pill({
   return (
     <div className={cn("rounded-xl px-3 py-2 flex flex-col gap-0.5", colors[color])}>
       <span className="text-[9px] uppercase tracking-widest font-bold opacity-60">{label}</span>
-      <span className={cn(
-        "text-xs font-semibold leading-snug",
-        unavailable && "text-muted-foreground/50 italic font-normal"
-      )}>
+      <span
+        className={cn(
+          "text-xs font-semibold leading-snug",
+          unavailable && "text-muted-foreground/50 italic font-normal",
+          arabicValue && !unavailable && "font-arabic text-base leading-normal"
+        )}
+        dir={arabicValue ? "rtl" : undefined}
+        lang={arabicValue ? "ar" : undefined}
+      >
         {value}
       </span>
     </div>
@@ -180,25 +182,27 @@ function ExpandableSection({
   );
 }
 
-// ─── Occurrence card ───────────────────────────────────────────────────────────
+// ─── Occurrence card (QAC-based) ───────────────────────────────────────────────
+// Receives a [surahNum, ayahNum, wordPos] tuple from the root index.
 
 const OccurrenceCard = memo(function OccurrenceCard({
-  occ,
+  pos,
   idx,
   onNavigate,
   onClose,
 }: {
-  occ: WordOccurrence;
+  pos: [number, number, number];
   idx: number;
   onNavigate: (surah: number, ayah: number) => void;
   onClose: () => void;
 }) {
+  const [surahNum, ayahNum] = pos;
   const handleClick = useCallback(() => {
-    onNavigate(occ.surahNum, occ.ayahNum);
+    onNavigate(surahNum, ayahNum);
     onClose();
-  }, [occ, onNavigate, onClose]);
+  }, [surahNum, ayahNum, onNavigate, onClose]);
 
-  const surahInfo = surahs.find((s) => s.number === occ.surahNum);
+  const surahInfo = surahs.find((s) => s.number === surahNum);
 
   return (
     <motion.button
@@ -207,28 +211,26 @@ const OccurrenceCard = memo(function OccurrenceCard({
       onClick={handleClick}
       className="w-full text-left rounded-xl border border-border/50 bg-card hover:bg-accent transition-colors duration-150 p-3"
     >
-      <div className="flex items-start gap-2.5">
-        <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shrink-0 mt-0.5">
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shrink-0">
           <BookOpen className="w-3.5 h-3.5 text-white" strokeWidth={2} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-semibold text-foreground">
-              {surahInfo?.name ?? occ.surahName}
+              {surahInfo?.name ?? `Surah ${surahNum}`}
             </span>
             <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
-              {occ.surahNum}:{occ.ayahNum}
+              {surahNum}:{ayahNum}
             </span>
           </div>
-          <p
-            className="font-arabic text-sm text-foreground/75 leading-[1.85] text-right line-clamp-2"
-            dir="rtl"
-            lang="ar"
-          >
-            {occ.arabic}
-          </p>
+          {surahInfo && (
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+              {surahInfo.arabicName}
+            </p>
+          )}
         </div>
-        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-2" strokeWidth={2} />
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={2} />
       </div>
     </motion.button>
   );
@@ -291,84 +293,112 @@ function stripHtml(html: string): string {
 // ─── Main sheet ────────────────────────────────────────────────────────────────
 
 export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) {
-  // ── API word data ──────────────────────────────────────────────────────────
-  const [wordData, setWordData]     = useState<VerseWord | null>(null);
+  // ── Quran.com word data (English gloss + audio) ─────────────────────────────
+  const [wordData, setWordData]       = useState<VerseWord | null>(null);
   const [loadingWord, setLoadingWord] = useState(false);
-  const [wordError, setWordError]   = useState(false);
+  const [wordError, setWordError]     = useState(false);
 
-  // ── Occurrences ────────────────────────────────────────────────────────────
-  // Pre-fetched when trigger changes so count badge always shows immediately.
-  const [occurrences, setOccurrences] = useState<WordOccurrence[] | null>(null);
-  const [occTotal, setOccTotal]       = useState<number | null>(null);
-  const [loadingOcc, setLoadingOcc]   = useState(false);
+  // ── QAC morphology data ─────────────────────────────────────────────────────
+  const [qacEntry, setQacEntry]       = useState<QACEntry | null>(null);
+  const [qacLoading, setQacLoading]   = useState(false);
+  const [qacError, setQacError]       = useState(false);
+
+  // ── Root occurrences (QAC root index) ───────────────────────────────────────
+  const [rootOccs, setRootOccs]       = useState<QACRootEntry | null>(null);
+  const [occLoading, setOccLoading]   = useState(false);
   const [occError, setOccError]       = useState(false);
 
-  // ── Tafseer ────────────────────────────────────────────────────────────────
-  const [tafseer, setTafseer]           = useState<TafseerResult | null>(null);
-  const [loadingTafseer, setLoadingTafseer] = useState(false);
-  const [tafseerError, setTafseerError] = useState(false);
+  // ── Tafseer ─────────────────────────────────────────────────────────────────
+  const [tafseer, setTafseer]                 = useState<TafseerResult | null>(null);
+  const [loadingTafseer, setLoadingTafseer]   = useState(false);
+  const [tafseerError, setTafseerError]       = useState(false);
 
   const { isBookmarked, toggleBookmark } = useWordBookmarks();
 
   const open = trigger !== null;
 
-  // ── Lexicon lookup (synchronous) ───────────────────────────────────────────
-  const lexMatch: LexiconMatch | undefined =
-    trigger ? lookupLexiconFull(trigger.wordText) : undefined;
-  const lexEntry = lexMatch?.entry;
-  const morphNote =
-    lexMatch
-      ? deriveMorphNote(lexMatch.matchType, lexEntry?.pos ?? "")
-      : null;
-
-  // ── Fetch API word data when trigger changes ───────────────────────────────
+  // ── Unified data-loading effect ──────────────────────────────────────────────
+  // Step 1: fetch Quran.com word data to obtain the CANONICAL word position.
+  //         This must precede QAC lookup because the app strips the basmala
+  //         prefix from the first displayed ayah of each surah, which shifts
+  //         rendered wordIndex values away from the corpus token positions.
+  //         `wordData.position` is authoritative; `wordIndex + 1` is only a
+  //         fallback used when the Quran.com fetch itself fails.
+  // Step 2: look up QAC morphology with the canonical position.
+  // Step 3: if a root is found, look up root occurrences.
   useEffect(() => {
     if (!trigger) {
       setWordData(null);
-      setOccurrences(null);
-      setOccTotal(null);
+      setQacEntry(null);
+      setRootOccs(null);
       setTafseer(null);
       return;
     }
 
-    // Word-by-word data
-    setWordData(null);
-    setWordError(false);
-    setLoadingWord(true);
+    let cancelled = false;
 
-    fetchVerseWords(trigger.surahNum, trigger.ayahNum)
-      .then((words) => {
+    // Reset all data states synchronously
+    setWordData(null);   setWordError(false);  setLoadingWord(true);
+    setQacEntry(null);   setQacError(false);   setQacLoading(true);
+    setRootOccs(null);   setOccError(false);   setOccLoading(true);
+
+    const run = async () => {
+      // ── Step 1: Quran.com word data + canonical position ─────────────────
+      // Fallback: rendered index (0-based) → 1-based, used only if Step 1 fails
+      let canonicalWordPos = trigger.wordIndex + 1;
+      try {
+        const words = await fetchVerseWords(trigger.surahNum, trigger.ayahNum);
+        if (cancelled) return;
         const realWords = words.filter((w) => w.charType === "word");
-        // Primary: match by stripped Arabic text (robust against index drift)
         const targetStripped = stripDiacritics(trigger.wordText);
         const match =
           realWords.find((w) => stripDiacritics(w.textUthmani) === targetStripped) ??
           realWords[trigger.wordIndex] ??
           null;
-        setWordData(match);
-        setLoadingWord(false);
-      })
-      .catch(() => { setWordError(true); setLoadingWord(false); });
+        if (!cancelled) { setWordData(match); setLoadingWord(false); }
+        // Canonical position from Quran.com/Tanzil tokenization — matches QAC index
+        if (match?.position) canonicalWordPos = match.position;
+      } catch {
+        if (!cancelled) { setWordError(true); setLoadingWord(false); }
+        // Non-fatal: QAC lookup continues with the index-based fallback
+      }
+
+      if (cancelled) return;
+
+      // ── Step 2: QAC morphology ────────────────────────────────────────────
+      try {
+        const entry = await lookupWordMorphology(
+          trigger.surahNum, trigger.ayahNum, canonicalWordPos,
+        );
+        if (cancelled) return;
+        setQacEntry(entry);
+        setQacLoading(false);
+
+        // ── Step 3: Root occurrences ────────────────────────────────────────
+        if (entry?.r) {
+          try {
+            const occs = await lookupRootOccurrences(entry.r);
+            if (!cancelled) { setRootOccs(occs); setOccLoading(false); }
+          } catch {
+            if (!cancelled) { setOccError(true); setOccLoading(false); }
+          }
+        } else {
+          if (!cancelled) setOccLoading(false);
+        }
+      } catch {
+        // QAC data file failed to load (network error / deploy sandbox)
+        if (!cancelled) {
+          setQacError(true);  setQacLoading(false);
+          setOccError(true);  setOccLoading(false);
+        }
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
   }, [trigger?.surahNum, trigger?.ayahNum, trigger?.wordIndex, trigger?.wordText]);
 
-  // ── Pre-fetch occurrences (not lazy) so count badge is always immediate ────
-  useEffect(() => {
-    if (!trigger) { setOccurrences(null); setOccTotal(null); return; }
-    setOccurrences(null);
-    setOccTotal(null);
-    setOccError(false);
-    setLoadingOcc(true);
-
-    fetchWordOccurrences(trigger.wordText)
-      .then((result) => {
-        setOccurrences(result.occurrences);
-        setOccTotal(result.total);
-        setLoadingOcc(false);
-      })
-      .catch(() => { setOccError(true); setOccurrences([]); setOccTotal(0); setLoadingOcc(false); });
-  }, [trigger?.wordText]);
-
-  // ── Fetch tafseer (Ibn Kathir) when surah:ayah changes ────────────────────
+  // ── Fetch tafseer when surah:ayah changes ────────────────────────────────────
   useEffect(() => {
     if (!trigger) { setTafseer(null); return; }
     setTafseer(null);
@@ -380,13 +410,13 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
       .catch(() => { setTafseerError(true); setLoadingTafseer(false); });
   }, [trigger?.surahNum, trigger?.ayahNum]);
 
-  // ── Derived display values ─────────────────────────────────────────────────
+  // ── Derived display values ───────────────────────────────────────────────────
   const displayArabic   = wordData?.textUthmani ?? trigger?.wordText ?? "";
   const displayTranslit = wordData?.transliteration || null;
   const displayMeaning  = wordData?.translation || null;
   const audioUrl        = wordData?.audioUrl ?? "";
 
-  // ── Bookmark ───────────────────────────────────────────────────────────────
+  // ── Bookmark ─────────────────────────────────────────────────────────────────
   const bookmarkId = trigger
     ? `${trigger.surahNum}:${trigger.ayahNum}:${trigger.wordIndex}`
     : "";
@@ -406,47 +436,63 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
     });
   }, [trigger, bookmarkId, displayArabic, displayTranslit, displayMeaning, toggleBookmark]);
 
-  // ── Share text ─────────────────────────────────────────────────────────────
+  // ── Share text ───────────────────────────────────────────────────────────────
   const getShareText = useCallback(() => {
     const lines = [
       displayArabic,
       displayTranslit ? `(${displayTranslit})` : "",
       displayMeaning  ? `"${displayMeaning}"` : "",
-      lexEntry?.root  ? `Root: ${lexEntry.root} — ${lexEntry.rootMeaning}` : "",
-      lexEntry?.explanation ? `\n${lexEntry.explanation}` : "",
+      qacEntry?.r     ? `Root: ${qacEntry.r}` : "",
+      qacEntry        ? `Morphology: ${formatMorphology(qacEntry)}` : "",
       `\nQuran ${trigger?.surahNum}:${trigger?.ayahNum}`,
-      "Shared from Quran Al-Falah · قرآن الفلاح",
+      "Shared from Rah-e-Safia · رہِ صافیہ",
     ];
     return lines.filter(Boolean).join("\n");
-  }, [displayArabic, displayTranslit, displayMeaning, lexEntry, trigger]);
+  }, [displayArabic, displayTranslit, displayMeaning, qacEntry, trigger]);
 
   const { copied, handleCopy, handleShare } = useCopyShare(getShareText);
   const { play, playing, loading: audioLoading } = useWordAudio(audioUrl);
 
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // ── Body scroll lock ───────────────────────────────────────────────────────
+  // ── Body scroll lock ─────────────────────────────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  // ── Occurrence badge ───────────────────────────────────────────────────────
-  const occBadge = loadingOcc ? (
+  // ── Occurrence count badge ───────────────────────────────────────────────────
+  const occBadge = occLoading ? (
     <span className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full text-[10px]">
       <Loader2 className="w-3 h-3 inline animate-spin" strokeWidth={2} />
     </span>
-  ) : occTotal !== null && occTotal > 0 ? (
+  ) : rootOccs !== null && rootOccs.c > 0 ? (
     <span className="px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full text-[10px] font-bold">
-      {occTotal}
+      {rootOccs.c}
     </span>
   ) : null;
 
-  // ── Tafseer content ────────────────────────────────────────────────────────
-  const tafseerText =
-    tafseer
-      ? (tafseer.isHtml ? stripHtml(tafseer.text) : tafseer.text)
-      : null;
+  // ── Tafseer content ──────────────────────────────────────────────────────────
+  const tafseerText = tafseer
+    ? (tafseer.isHtml ? stripHtml(tafseer.text) : tafseer.text)
+    : null;
+
+  // ── QAC-derived values ───────────────────────────────────────────────────────
+  const qacRoot   = qacEntry?.r ?? null;
+  const qacLemma  = qacEntry?.l ?? null;
+  const qacPOS    = qacEntry?.p
+    ? (qacEntry.p === "N" ? "Noun"
+     : qacEntry.p === "V" ? "Verb"
+     : qacEntry.p === "ADJ" ? "Adjective"
+     : qacEntry.p === "PN" ? "Proper Noun"
+     : qacEntry.p === "PRON" ? "Pronoun"
+     : qacEntry.p === "P" ? "Preposition"
+     : qacEntry.p === "CONJ" ? "Conjunction"
+     : qacEntry.p)
+    : null;
+
+  // Limit occurrence list to 50 items
+  const occPositions: Array<[number, number, number]> = rootOccs?.w.slice(0, 50) ?? [];
 
   return (
     <AnimatePresence>
@@ -491,306 +537,329 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
                   </p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-secondary hover:bg-accent flex items-center justify-center shrink-0 transition-colors"
-                aria-label="Close word study"
-              >
-                <X className="w-4 h-4 text-muted-foreground" strokeWidth={2} />
-              </button>
-            </div>
-
-            {/* ── Scrollable content ── */}
-            <div className="flex-1 overflow-y-auto overscroll-contain">
-              <div className="px-5 py-4 space-y-4 pb-10">
-
-                {/* ── §1-3: Word hero — Arabic · Transliteration · English meaning ── */}
-                <div className="rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/6 to-transparent p-5 text-center">
-                  {/* §1 Arabic word */}
-                  <p
-                    className="font-arabic text-5xl text-foreground leading-[1.6] mb-2"
-                    dir="rtl"
-                    lang="ar"
-                  >
-                    {displayArabic}
-                  </p>
-
-                  {loadingWord && (
-                    <div className="flex items-center justify-center gap-2 text-muted-foreground mt-2">
-                      <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                      <span className="text-xs">Loading word data…</span>
-                    </div>
-                  )}
-
-                  {!loadingWord && wordError && (
-                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mt-2">
-                      <AlertCircle className="w-3.5 h-3.5" strokeWidth={2} />
-                      <span className="text-xs">Word data unavailable — showing local data only</span>
-                    </div>
-                  )}
-
-                  {/* §2 Transliteration */}
-                  {!loadingWord && (
-                    displayTranslit
-                      ? <p className="text-sm italic text-muted-foreground mb-1.5">{displayTranslit}</p>
-                      : !wordError && (
-                          <p className="text-xs italic text-muted-foreground/50 mb-1.5">
-                            Transliteration not available
-                          </p>
-                        )
-                  )}
-
-                  {/* §3 English meaning */}
-                  {!loadingWord && (
-                    displayMeaning
-                      ? <p className="text-sm font-medium text-foreground/80">"{displayMeaning}"</p>
-                      : !wordError && (
-                          <p className="text-xs italic text-muted-foreground/50">
-                            English meaning not available for this word token
-                          </p>
-                        )
-                  )}
-                </div>
-
-                {/* ── Action bar ── */}
-                <div className="flex flex-wrap gap-2">
-                  {/* Audio */}
-                  <button
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Audio button */}
+                {audioUrl && (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
                     onClick={play}
-                    disabled={!audioUrl}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-200",
-                      audioUrl
-                        ? playing || audioLoading
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-primary/12 hover:bg-primary/20 text-primary"
-                        : "bg-secondary/50 text-muted-foreground/50 cursor-not-allowed"
+                      "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                      playing
+                        ? "gradient-primary text-white"
+                        : "bg-secondary hover:bg-accent text-muted-foreground"
                     )}
-                    aria-label="Play word pronunciation"
+                    aria-label="Play word audio"
                   >
-                    {audioLoading
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
-                      : <Volume2 className="w-3.5 h-3.5" strokeWidth={2} />
-                    }
-                    {playing ? "Playing…" : "Pronounce"}
-                  </button>
-
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary/80 hover:bg-secondary text-foreground text-xs font-medium transition-colors duration-200"
-                  >
-                    {copied
-                      ? <Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} />
-                      : <Copy className="w-3.5 h-3.5" strokeWidth={2} />
-                    }
-                    {copied ? "Copied!" : "Copy"}
-                  </button>
-
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary/80 hover:bg-secondary text-foreground text-xs font-medium transition-colors duration-200"
-                  >
-                    <Share2 className="w-3.5 h-3.5" strokeWidth={2} />
-                    Share
-                  </button>
-
-                  <button
-                    onClick={handleBookmark}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-200",
-                      bookmarked
-                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        : "bg-secondary/80 hover:bg-secondary text-foreground"
+                    {audioLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" strokeWidth={2} />
                     )}
-                  >
-                    {bookmarked
-                      ? <BookmarkCheck className="w-3.5 h-3.5" strokeWidth={2} />
-                      : <Bookmark className="w-3.5 h-3.5" strokeWidth={2} />
-                    }
-                    {bookmarked ? "Saved" : "Save"}
-                  </button>
-                </div>
-
-                {/* ── §4-6,9: Lexical info pills — always rendered ── */}
-                {/* §4 Urdu meaning · §5 Root letters · §6 Lemma · §9 Root meaning */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Pill
-                    label="Arabic Root"
-                    value={lexEntry?.root || "—"}
-                    color="emerald"
-                    unavailable={!lexEntry?.root}
-                  />
-                  <Pill
-                    label="Root Meaning"
-                    value={lexEntry?.rootMeaning || "—"}
-                    color="amber"
-                    unavailable={!lexEntry?.rootMeaning}
-                  />
-                  <Pill
-                    label="Lemma (Citation Form)"
-                    value={lexEntry?.arabic || "—"}
-                    color="sky"
-                    unavailable={!lexEntry?.arabic}
-                  />
-                  <Pill
-                    label="Part of Speech"
-                    value={lexEntry?.pos || "—"}
-                    color="sky"
-                    unavailable={!lexEntry?.pos}
-                  />
-                  {/* Urdu full-width */}
-                  <div className="col-span-2">
-                    <Pill
-                      label="Urdu Meaning"
-                      value={lexEntry?.urdu || "—"}
-                      color="violet"
-                      unavailable={!lexEntry?.urdu}
-                    />
-                  </div>
-                </div>
-
-                {/* Lexicon coverage note when word is not indexed */}
-                {!lexEntry && (
-                  <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-secondary/20 px-3 py-2.5">
-                    <Info className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0 mt-0.5" strokeWidth={1.8} />
-                    <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
-                      Root, lemma, and Urdu meaning are sourced from a curated dictionary of ~90 high-frequency
-                      Quranic words. This word's inflected form is not yet indexed — conjugated verbs, broken
-                      plurals, and rare forms may not have an entry.
-                    </p>
-                  </div>
+                  </motion.button>
                 )}
 
-                {/* ── §7: Morphological information — always shown ── */}
-                <ExpandableSection icon={Shapes} title="Morphological Information">
-                  {morphNote ? (
-                    <>
-                      <div className="rounded-xl bg-secondary/30 border border-border/40 px-4 py-3">
-                        <p className="text-sm text-foreground/85 leading-relaxed">{morphNote}</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5 mt-1">
-                        <div className="rounded-lg bg-secondary/40 px-2 py-1.5 text-center">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/70 font-bold mb-0.5">Match</p>
-                          <p className="text-[10px] font-medium text-foreground/80 leading-tight break-all">
-                            {lexMatch?.matchType.replace(/\+/g, " + ") ?? "—"}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-secondary/40 px-2 py-1.5 text-center">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/70 font-bold mb-0.5">POS</p>
-                          <p className="text-[10px] font-medium text-foreground/80 leading-tight">{lexEntry?.pos ?? "—"}</p>
-                        </div>
-                        <div className="rounded-lg bg-secondary/40 px-2 py-1.5 text-center">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/70 font-bold mb-0.5">Lemma</p>
-                          <p className="text-[10px] font-medium text-foreground/80 leading-tight font-arabic" dir="rtl">
-                            {lexEntry?.arabic ?? "—"}
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <UnavailableNotice message="Morphological analysis is not available for this word. The word's inflected form is not indexed in the current morphology dataset. Full morphological breakdown (case, voice, person, number) requires a complete Arabic corpus database." />
+                {/* Bookmark */}
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleBookmark}
+                  className={cn(
+                    "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                    bookmarked ? "bg-amber-500/15 text-amber-500" : "bg-secondary hover:bg-accent text-muted-foreground"
                   )}
-                </ExpandableSection>
-
-                {/* ── §8: Lexical explanation — always shown ── */}
-                <ExpandableSection icon={BookOpen} title="Lexical Explanation" defaultOpen={!!lexEntry?.explanation}>
-                  {lexEntry?.explanation ? (
-                    <p className="text-sm text-foreground/85 leading-relaxed">
-                      {lexEntry.explanation}
-                    </p>
-                  ) : (
-                    <UnavailableNotice message="No lexical explanation is available for this word. The word may be a grammatical particle, a verb conjugation, or a form not yet covered by the current dictionary." />
-                  )}
-                </ExpandableSection>
-
-                {/* ── §10-13: Occurrences in the Quran — pre-fetched, always shown ── */}
-                <ExpandableSection
-                  icon={Hash}
-                  title="Occurrences in the Quran"
-                  badge={occBadge}
+                  aria-label={bookmarked ? "Remove bookmark" : "Bookmark word"}
                 >
-                  {/* §10 Exact occurrence count */}
-                  {!loadingOcc && occTotal !== null && occTotal > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      This exact word form appears{" "}
-                      <span className="font-semibold text-primary">{occTotal}</span>{" "}
-                      time{occTotal !== 1 ? "s" : ""} in the Quran. Tap any verse to navigate there.
-                    </p>
-                  )}
+                  {bookmarked
+                    ? <BookmarkCheck className="w-4 h-4 fill-amber-400" strokeWidth={1.8} />
+                    : <Bookmark className="w-4 h-4" strokeWidth={1.8} />
+                  }
+                </motion.button>
 
-                  {/* §11 Root occurrence count */}
-                  <div className="rounded-xl border border-border/40 bg-secondary/20 px-3 py-2.5">
-                    <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
-                      <span className="font-semibold text-foreground/60">Root occurrences: </span>
-                      Not available from current dataset. Root-level frequency requires a
-                      morphological corpus database (e.g. Quranic Arabic Corpus).
-                    </p>
-                  </div>
+                {/* Copy */}
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCopy}
+                  className="w-8 h-8 rounded-xl bg-secondary hover:bg-accent flex items-center justify-center shrink-0 transition-colors text-muted-foreground"
+                  aria-label="Copy word info"
+                >
+                  {copied
+                    ? <Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} />
+                    : <Copy className="w-3.5 h-3.5" strokeWidth={2} />
+                  }
+                </motion.button>
 
-                  {/* Loading */}
-                  {loadingOcc && (
-                    <div className="flex items-center gap-2 text-muted-foreground py-2 justify-center">
-                      <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                      <span className="text-xs">Searching the Quran…</span>
-                    </div>
-                  )}
+                {/* Share */}
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleShare}
+                  className="w-8 h-8 rounded-xl bg-secondary hover:bg-accent flex items-center justify-center shrink-0 transition-colors text-muted-foreground"
+                  aria-label="Share word info"
+                >
+                  <Share2 className="w-3.5 h-3.5" strokeWidth={2} />
+                </motion.button>
 
-                  {/* Error */}
-                  {occError && !loadingOcc && (
-                    <UnavailableNotice message="Could not fetch occurrence data. Please check your internet connection." />
-                  )}
-
-                  {/* §12-13 Verse list — always Quran verses (AlQuran.cloud is Quran-only) */}
-                  {!loadingOcc && !occError && occurrences !== null && (
-                    occurrences.length === 0
-                      ? <UnavailableNotice message="No occurrences found for this word form. The search matches exact Arabic script — diacritics are stripped before searching." />
-                      : <div className="space-y-2.5">
-                          {occurrences.map((occ, i) => (
-                            <OccurrenceCard
-                              key={`${occ.surahNum}:${occ.ayahNum}:${i}`}
-                              occ={occ}
-                              idx={i}
-                              onNavigate={onNavigate}
-                              onClose={onClose}
-                            />
-                          ))}
-                        </div>
-                  )}
-                </ExpandableSection>
-
-                {/* ── §14: Tafseer (Ibn Kathir) — always shown ── */}
-                <ExpandableSection icon={ScrollText} title={`Tafseer — ${tafseer?.name ?? "Ibn Kathir"}`}>
-                  {loadingTafseer && (
-                    <div className="flex items-center gap-2 text-muted-foreground py-2 justify-center">
-                      <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                      <span className="text-xs">Loading tafseer…</span>
-                    </div>
-                  )}
-                  {!loadingTafseer && tafseerError && (
-                    <UnavailableNotice message="Could not load tafseer. Please check your internet connection and try again." />
-                  )}
-                  {!loadingTafseer && !tafseerError && tafseerText ? (
-                    <>
-                      <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-line">
-                        {tafseerText}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/50 mt-1">
-                        Source: {tafseer?.name} · via Quran.com
-                      </p>
-                    </>
-                  ) : !loadingTafseer && !tafseerError && (
-                    <UnavailableNotice message="Tafseer is not available for this verse. The dataset may not include an entry for this particular ayah." />
-                  )}
-                </ExpandableSection>
-
-                {/* ── Attribution ── */}
-                <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed">
-                  Word data · Quran.com v4 API · Audio · QuranCDN
-                  {lexEntry && " · Lexical data · Quran Al-Falah dictionary"}
-                  {" · Occurrences · AlQuran.cloud · Tafseer · Quran.com"}
-                </p>
-
+                {/* Close */}
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-xl bg-secondary hover:bg-accent flex items-center justify-center shrink-0 transition-colors"
+                  aria-label="Close word study"
+                >
+                  <X className="w-4 h-4 text-muted-foreground" strokeWidth={2} />
+                </button>
               </div>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+
+              {/* ── Hero: Arabic word + transliteration + English ── */}
+              <div className="text-center py-2">
+                {loadingWord ? (
+                  <div className="flex items-center justify-center gap-2 h-14">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" strokeWidth={2} />
+                    <span className="text-sm text-muted-foreground">Loading…</span>
+                  </div>
+                ) : (
+                  <>
+                    <p
+                      className="font-arabic text-4xl text-foreground leading-[1.6] mb-1"
+                      dir="rtl"
+                      lang="ar"
+                    >
+                      {displayArabic}
+                    </p>
+                    {displayTranslit && (
+                      <p className="text-sm text-muted-foreground italic mb-1">{displayTranslit}</p>
+                    )}
+                    {displayMeaning && (
+                      <p className="text-sm font-medium text-foreground/80">{displayMeaning}</p>
+                    )}
+                    {wordError && !displayArabic && (
+                      <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                        <AlertCircle className="w-3.5 h-3.5" strokeWidth={2} />
+                        Could not load word data
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ── Pills: Root · Lemma · POS ── */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Root */}
+                {qacLoading ? (
+                  <div className="rounded-xl bg-secondary/70 px-3 py-2 flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-widest font-bold opacity-60">Root</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mt-0.5" strokeWidth={2} />
+                  </div>
+                ) : (
+                  <Pill
+                    label="Root"
+                    value={qacRoot ?? "—"}
+                    color="emerald"
+                    unavailable={!qacRoot}
+                    arabicValue={!!qacRoot}
+                  />
+                )}
+
+                {/* Lemma */}
+                {qacLoading ? (
+                  <div className="rounded-xl bg-secondary/70 px-3 py-2 flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-widest font-bold opacity-60">Lemma</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mt-0.5" strokeWidth={2} />
+                  </div>
+                ) : (
+                  <Pill
+                    label="Lemma"
+                    value={qacLemma ?? "—"}
+                    color="sky"
+                    unavailable={!qacLemma}
+                    arabicValue={!!qacLemma}
+                  />
+                )}
+
+                {/* Part of speech */}
+                {qacLoading ? (
+                  <div className="rounded-xl bg-secondary/70 px-3 py-2 flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-widest font-bold opacity-60">POS</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mt-0.5" strokeWidth={2} />
+                  </div>
+                ) : (
+                  <Pill
+                    label="POS"
+                    value={qacPOS ?? "Particle"}
+                    color="violet"
+                    unavailable={!qacEntry}
+                  />
+                )}
+              </div>
+
+              {/* ── Morphological analysis ── */}
+              <ExpandableSection
+                icon={Shapes}
+                title="Morphology"
+                defaultOpen
+              >
+                {qacLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                    Loading morphology…
+                  </div>
+                ) : qacError ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2} />
+                    Could not load morphological data. Check your connection.
+                  </div>
+                ) : qacEntry ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-foreground/80 leading-relaxed">
+                      {formatMorphology(qacEntry)}
+                    </p>
+                    {/* Raw fields for the curious */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {qacEntry.p && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-mono">
+                          {qacEntry.p}
+                        </span>
+                      )}
+                      {qacEntry.g && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono">
+                          {qacEntry.g === "M" ? "Masc" : "Fem"}
+                        </span>
+                      )}
+                      {qacEntry.n && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono">
+                          {qacEntry.n === "S" ? "Sing" : qacEntry.n === "D" ? "Dual" : "Plural"}
+                        </span>
+                      )}
+                      {qacEntry.c && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono">
+                          {qacEntry.c === "N" ? "Nom" : qacEntry.c === "A" ? "Acc" : "Gen"}
+                        </span>
+                      )}
+                      {qacEntry.t && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">
+                          {qacEntry.t}
+                        </span>
+                      )}
+                      {qacEntry.ps && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">
+                          {qacEntry.ps}
+                        </span>
+                      )}
+                      {qacEntry.vn && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">
+                          {qacEntry.vn === "A" ? "Active" : "Passive"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <UnavailableNotice message="No morphological data found for this word token." />
+                )}
+              </ExpandableSection>
+
+              {/* ── Lexical explanation (English gloss from Quran.com) ── */}
+              <ExpandableSection icon={BookOpen} title="Meaning">
+                {loadingWord ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                    Loading…
+                  </div>
+                ) : displayMeaning ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-foreground/80 leading-relaxed">{displayMeaning}</p>
+                    {displayTranslit && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Transliteration: {displayTranslit}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <UnavailableNotice message="Word-level English gloss not available for this token." />
+                )}
+              </ExpandableSection>
+
+              {/* ── Root occurrences ── */}
+              <ExpandableSection
+                icon={BookOpen}
+                title={qacRoot ? `Root "${qacRoot}" occurrences` : "Occurrences"}
+                badge={occBadge}
+              >
+                {occLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                    Looking up corpus…
+                  </div>
+                ) : occError ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2} />
+                    Could not load occurrence data.
+                  </div>
+                ) : !qacRoot ? (
+                  <UnavailableNotice message="This word has no root (grammatical particle). Root occurrence counts apply to content words." />
+                ) : rootOccs ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Root <span className="font-arabic text-sm text-foreground" dir="rtl" lang="ar">{qacRoot}</span>{" "}
+                      appears <strong className="text-foreground">{rootOccs.c.toLocaleString()}</strong> times across the Quran.
+                      {rootOccs.w.length > 50 && " Showing first 50."}
+                    </p>
+                    <div className="space-y-2">
+                      {occPositions.map((pos, i) => (
+                        <OccurrenceCard
+                          key={`${pos[0]}:${pos[1]}:${pos[2]}`}
+                          pos={pos}
+                          idx={i}
+                          onNavigate={onNavigate}
+                          onClose={onClose}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <UnavailableNotice message="No occurrences found in the root index." />
+                )}
+              </ExpandableSection>
+
+              {/* ── Tafseer ── */}
+              <ExpandableSection icon={ScrollText} title="Tafseer (Ibn Kathir)">
+                {loadingTafseer ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                    Loading tafseer…
+                  </div>
+                ) : tafseerError ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2} />
+                    Tafseer unavailable. Check your connection.
+                  </div>
+                ) : tafseerText ? (
+                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
+                    {tafseerText}
+                  </p>
+                ) : (
+                  <UnavailableNotice message="Tafseer not available for this verse." />
+                )}
+              </ExpandableSection>
+
+              {/* ── QAC Attribution (required by license) ── */}
+              <div className="flex items-center gap-1.5 px-1 pt-1 pb-2">
+                <ExternalLink className="w-2.5 h-2.5 text-muted-foreground/40 shrink-0" strokeWidth={1.8} />
+                <p className="text-[9px] text-muted-foreground/40 leading-relaxed">
+                  Morphological data: Quranic Arabic Corpus ·{" "}
+                  <a
+                    href="http://corpus.quran.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-muted-foreground/70 transition-colors"
+                  >
+                    corpus.quran.com
+                  </a>{" "}
+                  · © 2011 Kais Dukes, GNU GPL
+                </p>
+              </div>
+
             </div>
           </motion.div>
         </>
