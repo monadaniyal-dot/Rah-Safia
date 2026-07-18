@@ -24,7 +24,7 @@ import {
   searchRootsByMeaning,
   type RootSearchResult,
 } from "@/lib/qac-root-meanings";
-import { lookupRootOccurrences } from "@/lib/word-study-api";
+import { lookupRootOccurrences, preloadQACData } from "@/lib/word-study-api";
 
 // ─── Suggestion chips ─────────────────────────────────────────────────────────
 
@@ -159,6 +159,13 @@ export default function RootMeaningSearchPage() {
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
+
+  // Kick off QAC root data loading immediately on mount so that by the time
+  // results appear the cache is already warm and all ResultRow occurrence
+  // counts resolve simultaneously from the shared promise/cache.
+  useEffect(() => {
+    preloadQACData();
+  }, []);
 
   // Debounce search input by 200 ms
   useEffect(() => {
