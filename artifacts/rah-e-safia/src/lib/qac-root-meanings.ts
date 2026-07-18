@@ -35,7 +35,7 @@ function normalize(root: string): string {
 }
 
 // ─── Root table (keys pre-normalized to QAC encoding) ──────────────────────────
-const ROOT_MEANINGS: Record<string, RootMeaning> = {
+export const ROOT_MEANINGS: Record<string, RootMeaning> = {
 
   // ─── ا ─────────────────────────────────────────────────────────────────────
   "امن": { en: "security, faith, trust", ur: "امن، ایمان، اعتماد" },

@@ -12,6 +12,7 @@ import {
   Repeat2,
   HandHeart,
   ScrollText,
+  Languages,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -97,6 +98,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "الكلمات والشهادة",
     icon: ScrollText,
     path: "/kalimas",
+  },
+  {
+    id: "word-meanings",
+    label: "Word Meanings",
+    arabicLabel: "معاني الكلمات",
+    icon: Languages,
+    path: "/word-meanings",
   },
   {
     id: "bookmarks",
