@@ -32,9 +32,10 @@ const MORPH_OUT = path.join(DATA_DIR, "qac-morphology.json");
 const ROOTS_OUT = path.join(DATA_DIR, "qac-roots.json");
 const TMP_ZIP   = "/tmp/qac_corpus.zip";
 
-// ─── Skip if already generated ────────────────────────────────────────────────
-if (existsSync(MORPH_OUT) && existsSync(ROOTS_OUT)) {
-  console.log("[QAC] Data files present — skipping generation.");
+// ─── Skip if already generated (pass --force to regenerate) ───────────────────
+const force = process.argv.includes("--force");
+if (!force && existsSync(MORPH_OUT) && existsSync(ROOTS_OUT)) {
+  console.log("[QAC] Data files present — skipping generation (use --force to regenerate).");
   process.exit(0);
 }
 
