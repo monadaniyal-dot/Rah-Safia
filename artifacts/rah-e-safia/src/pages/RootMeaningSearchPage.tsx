@@ -149,8 +149,14 @@ function ResultRow({ result, index, onNavigate }: ResultRowProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RootMeaningSearchPage() {
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [query, setQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") ?? "";
+  });
+  const [debouncedQuery, setDebouncedQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") ?? "";
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
 

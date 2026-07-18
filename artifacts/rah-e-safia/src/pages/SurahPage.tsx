@@ -703,9 +703,19 @@ export default function SurahPage() {
               {isLoading ? "…" : surah.verses} verses · {surah.type}
             </p>
           </div>
-          <p className="font-arabic text-lg text-foreground shrink-0" dir="rtl">
-            {surah.arabicName}
-          </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => navigate("/root-search")}
+              className="w-8 h-8 rounded-lg bg-secondary hover:bg-primary/10 flex items-center justify-center transition-colors group"
+              aria-label="Search by root meaning"
+              title="Search by root meaning"
+            >
+              <TextSearch className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" strokeWidth={1.8} />
+            </button>
+            <p className="font-arabic text-lg text-foreground" dir="rtl">
+              {surah.arabicName}
+            </p>
+          </div>
         </div>
       </header>
 

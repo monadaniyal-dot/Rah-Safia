@@ -2,7 +2,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipBack, SkipForward, ChevronDown,
   Loader2, AlertCircle, RefreshCw, Repeat, Repeat1,
+  TextSearch,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQuranPlayer, usePlayerProgress, type PlaybackSpeed, type RepeatMode } from "@/context/QuranPlayerContext";
 import { RECITERS, formatPlayerTime } from "@/lib/quran-audio";
@@ -22,6 +24,7 @@ export default function FullPlayer() {
     state, togglePlayPause, nextAyah, prevAyah, seek,
     setSpeed, setRepeat, setReciter, closeFullPlayer,
   } = useQuranPlayer();
+  const [, navigate] = useLocation();
 
   const { currentTime, duration } = usePlayerProgress();
   const {
@@ -117,6 +120,16 @@ export default function FullPlayer() {
                   </div>
                 )}
               </div>
+
+              {/* Root meaning search shortcut */}
+              <button
+                onClick={() => { closeFullPlayer(); navigate("/root-search"); }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-primary/6 hover:bg-primary/12 border border-primary/15 text-primary text-xs font-semibold transition-colors duration-150"
+                aria-label="Search roots by meaning"
+              >
+                <TextSearch className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                Search roots by meaning
+              </button>
 
               {/* Error state */}
               {hasError && (

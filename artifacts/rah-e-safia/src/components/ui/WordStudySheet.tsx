@@ -24,6 +24,7 @@ import {
   useRef,
   memo,
 } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -370,6 +371,8 @@ function stripHtml(html: string): string {
 // ─── Main sheet ────────────────────────────────────────────────────────────────
 
 export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) {
+  const [, navigate] = useLocation();
+
   // ── Quran.com word data (English gloss + audio) ─────────────────────────────
   const [wordData, setWordData]       = useState<VerseWord | null>(null);
   const [loadingWord, setLoadingWord] = useState(false);
@@ -834,9 +837,36 @@ export default function WordStudySheet({ trigger, onClose, onNavigate }: Props) 
                           </p>
                         </div>
                       )}
+
+                      {/* Search by meaning shortcut */}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          navigate(`/root-search?q=${encodeURIComponent(qacRootMeaning.en.split(",")[0].trim())}`);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/6 hover:bg-primary/12 border border-primary/15 text-primary text-xs font-semibold transition-colors duration-150 group"
+                      >
+                        <Search className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                        <span className="flex-1 text-left">Find other roots with this meaning</span>
+                        <ChevronRight className="w-3 h-3 text-primary/50 group-hover:text-primary transition-colors" strokeWidth={2} />
+                      </button>
                     </div>
                   ) : (
-                    <UnavailableNotice message="Root meaning not found in the lexical index for this root." />
+                    <div className="space-y-2">
+                      <UnavailableNotice message="Root meaning not found in the lexical index for this root." />
+                      {/* Still offer the search page even without a matched meaning */}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          navigate("/root-search");
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary hover:bg-accent border border-border text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors duration-150 group"
+                      >
+                        <Search className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                        <span className="flex-1 text-left">Search roots by meaning</span>
+                        <ChevronRight className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
+                      </button>
+                    </div>
                   )}
                 </ExpandableSection>
               )}
