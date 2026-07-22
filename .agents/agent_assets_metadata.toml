@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "NW1UVrzLt_lXoFRZAfiHt"
+uri = "file://quran-alfalah-android.zip"
+type = "unspecified"
+title = "Quran Al-Falah — Android Studio Project"
