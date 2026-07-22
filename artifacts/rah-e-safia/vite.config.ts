@@ -8,10 +8,14 @@ if (!rawPort) throw new Error("PORT environment variable is required.");
 const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT: "${rawPort}"`);
 
-const basePath = process.env.BASE_PATH ?? "/";
-
 export default defineConfig({
-  base: basePath,
+  // "./" emits relative asset paths (./assets/…) instead of absolute (/assets/…).
+  // This is required for Capacitor's file:// origin, where a leading "/" would
+  // resolve to the filesystem root rather than the app bundle directory.
+  // It is equally correct for the live web deployment: with hash-based routing
+  // the browser's path component never changes from the root, so relative paths
+  // always resolve identically to absolute ones.
+  base: "./",
   plugins: [
     react(),
     tailwindcss(),
