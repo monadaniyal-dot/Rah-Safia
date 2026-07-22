@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Quran Al-Falah</string>
+    <string name="title_activity_main">Quran Al-Falah</string>
+    <string name="package_name">app.quran.alfalah</string>
+    <string name="custom_url_scheme">app.quran.alfalah</string>
+</resources>
