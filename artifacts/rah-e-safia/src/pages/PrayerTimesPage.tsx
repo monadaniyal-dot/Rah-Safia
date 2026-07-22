@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Sun, CloudSun, Sunset, Moon, Star,
   LocateFixed, Loader2, AlertCircle, MapPin, RefreshCw, Search,
+  Sunrise,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/use-settings";
@@ -29,6 +30,7 @@ interface LocationInfo {
 
 interface ReadyData {
   prayers: PrayerInfo[];
+  sunriseTime24: string;
   hijriDate: string;
   location: LocationInfo;
 }
@@ -39,6 +41,23 @@ type PageState =
   | { status: "fetching"; location: LocationInfo }
   | { status: "error"; message: string; permDenied?: boolean }
   | { status: "ready"; data: ReadyData };
+
+type PeriodKey = "midnight" | "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
+
+interface LiveStatus {
+  period: PeriodKey;
+  label: string;
+  arabicLabel: string;
+  emoji: string;
+  justStarted: boolean;        // first 90 s of this period — show "Time Has Begun"
+  currentPrayerIdx: number;    // -1 for midnight / sunrise
+  nextPrayerIdx: number;       // index in prayers[]
+  nextIsWrapped: boolean;      // next prayer is tomorrow's Fajr
+  countdownSecs: number;
+  progressFraction: number;    // 0–1 — for animated progress bar
+  // notificationKey exposed so future notification logic can subscribe
+  notificationKey: string;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -51,16 +70,11 @@ const PRAYER_META = [
 ] as const;
 
 const ALADHAN_METHOD: Record<string, number> = {
-  MWL: 1,
-  ISNA: 2,
-  Egypt: 3,
-  Makkah: 4,
-  Karachi: 5,
+  MWL: 1, ISNA: 2, Egypt: 3, Makkah: 4, Karachi: 5,
 };
 
 const ALADHAN_SCHOOL: Record<string, number> = {
-  shafi: 0,
-  hanafi: 1,
+  shafi: 0, hanafi: 1,
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -69,6 +83,26 @@ const METHOD_LABELS: Record<string, string> = {
   Egypt: "Egyptian Authority",
   Makkah: "Umm al-Qura",
   Karachi: "Karachi",
+};
+
+const PERIOD_META: Record<PeriodKey, { emoji: string; label: string; arabicLabel: string; accentFrom: string; accentTo: string; textAccent: string; glow: string }> = {
+  midnight: { emoji: "🌙", label: "Tonight · Awaiting Fajr", arabicLabel: "انتظار الفجر",  accentFrom: "from-slate-900",   accentTo: "to-indigo-950", textAccent: "text-indigo-300", glow: "shadow-indigo-500/15" },
+  fajr:     { emoji: "🌅", label: "Time for Fajr",           arabicLabel: "وقت الفجر",      accentFrom: "from-indigo-950",  accentTo: "to-blue-900",   textAccent: "text-blue-300",   glow: "shadow-blue-500/15"   },
+  sunrise:  { emoji: "☀️", label: "Sunrise · Waiting for Dhuhr", arabicLabel: "شروق الشمس", accentFrom: "from-amber-900",  accentTo: "to-orange-900", textAccent: "text-amber-300",  glow: "shadow-amber-500/15"  },
+  dhuhr:    { emoji: "🌞", label: "Time for Dhuhr",          arabicLabel: "وقت الظهر",      accentFrom: "from-amber-600",   accentTo: "to-orange-700", textAccent: "text-yellow-200", glow: "shadow-amber-500/15"  },
+  asr:      { emoji: "🌤", label: "Time for Asr",            arabicLabel: "وقت العصر",      accentFrom: "from-sky-700",     accentTo: "to-cyan-800",   textAccent: "text-sky-200",    glow: "shadow-sky-500/15"    },
+  maghrib:  { emoji: "🌇", label: "Time for Maghrib",        arabicLabel: "وقت المغرب",     accentFrom: "from-rose-800",    accentTo: "to-orange-900", textAccent: "text-rose-200",   glow: "shadow-rose-500/15"   },
+  isha:     { emoji: "🌙", label: "Time for Isha",           arabicLabel: "وقت العشاء",     accentFrom: "from-slate-800",   accentTo: "to-indigo-950", textAccent: "text-slate-300",  glow: "shadow-slate-500/15"  },
+};
+
+const JUST_STARTED_MESSAGES: Record<PeriodKey, string> = {
+  midnight: "",
+  fajr:     "Fajr Time Has Begun",
+  sunrise:  "Sunrise Has Arrived",
+  dhuhr:    "Dhuhr Time Has Begun",
+  asr:      "Asr Time Has Begun",
+  maghrib:  "Maghrib Time Has Begun",
+  isha:     "Isha Time Has Begun",
 };
 
 const periodStyles: Record<string, { bg: string; iconColor: string }> = {
@@ -86,6 +120,10 @@ function toMinutes(t: string): number {
   return h * 60 + m;
 }
 
+function toSeconds(t: string): number {
+  return toMinutes(t) * 60;
+}
+
 function parseTime(t: string) {
   const [hStr, mStr] = t.split(":");
   const h = parseInt(hStr, 10);
@@ -100,6 +138,11 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
+function nowSeconds(): number {
+  const d = new Date();
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+}
+
 function nextPrayerIndex(prayers: PrayerInfo[]): number {
   const cur = nowMinutes();
   const idx = prayers.findIndex((p) => toMinutes(p.time24) > cur);
@@ -107,23 +150,137 @@ function nextPrayerIndex(prayers: PrayerInfo[]): number {
 }
 
 function secondsUntil(time24: string, isWrapped: boolean): number {
-  const target = toMinutes(time24) * 60;
-  const d = new Date();
-  const nowSecs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-  const diff = target - nowSecs;
+  const target = toSeconds(time24);
+  const diff = target - nowSeconds();
   return isWrapped ? diff + 86400 : diff;
 }
 
+/** HH:MM:SS format for the live countdown */
 function formatCountdown(secs: number): string {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+  const s = Math.max(0, Math.floor(secs));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 function fmtCoord(n: number, pos: string, neg: string) {
   return `${Math.abs(n).toFixed(4)}° ${n >= 0 ? pos : neg}`;
+}
+
+/**
+ * Compute the full live status from current time + prayer data.
+ * This is the single source of truth for the dashboard.
+ * No prayer calculation logic is modified here — we only interpret the times.
+ */
+function computeLiveStatus(prayers: PrayerInfo[], sunriseTime24: string): LiveStatus {
+  const nowSecs = nowSeconds();
+
+  // Convert all key times to seconds-since-midnight
+  const fajrSecs    = toSeconds(prayers[0].time24);
+  const sunriseSecs = toSeconds(sunriseTime24);
+  const dhuhrSecs   = toSeconds(prayers[1].time24);
+  const asrSecs     = toSeconds(prayers[2].time24);
+  const maghribSecs = toSeconds(prayers[3].time24);
+  const ishaSecs    = toSeconds(prayers[4].time24);
+
+  const JUST_STARTED_WINDOW = 90; // seconds
+
+  let period: PeriodKey;
+  let currentPrayerIdx: number;
+  let nextPrayerIdx: number;
+  let nextIsWrapped: boolean;
+  let periodStartSecs: number;
+  let periodEndSecs: number;
+
+  if (nowSecs < fajrSecs) {
+    // Midnight zone: before today's Fajr
+    period           = "midnight";
+    currentPrayerIdx = -1;
+    nextPrayerIdx    = 0; // Fajr
+    nextIsWrapped    = false;
+    periodStartSecs  = ishaSecs - 86400; // yesterday's Isha (approx)
+    periodEndSecs    = fajrSecs;
+  } else if (nowSecs < sunriseSecs) {
+    period           = "fajr";
+    currentPrayerIdx = 0;
+    nextPrayerIdx    = -1; // next notable time is Sunrise, not a prayer
+    nextIsWrapped    = false;
+    periodStartSecs  = fajrSecs;
+    periodEndSecs    = sunriseSecs;
+  } else if (nowSecs < dhuhrSecs) {
+    period           = "sunrise";
+    currentPrayerIdx = -1;
+    nextPrayerIdx    = 1; // Dhuhr
+    nextIsWrapped    = false;
+    periodStartSecs  = sunriseSecs;
+    periodEndSecs    = dhuhrSecs;
+  } else if (nowSecs < asrSecs) {
+    period           = "dhuhr";
+    currentPrayerIdx = 1;
+    nextPrayerIdx    = 2; // Asr
+    nextIsWrapped    = false;
+    periodStartSecs  = dhuhrSecs;
+    periodEndSecs    = asrSecs;
+  } else if (nowSecs < maghribSecs) {
+    period           = "asr";
+    currentPrayerIdx = 2;
+    nextPrayerIdx    = 3; // Maghrib
+    nextIsWrapped    = false;
+    periodStartSecs  = asrSecs;
+    periodEndSecs    = maghribSecs;
+  } else if (nowSecs < ishaSecs) {
+    period           = "maghrib";
+    currentPrayerIdx = 3;
+    nextPrayerIdx    = 4; // Isha
+    nextIsWrapped    = false;
+    periodStartSecs  = maghribSecs;
+    periodEndSecs    = ishaSecs;
+  } else {
+    // After Isha — counting down to tomorrow's Fajr
+    period           = "isha";
+    currentPrayerIdx = 4;
+    nextPrayerIdx    = 0; // tomorrow's Fajr
+    nextIsWrapped    = true;
+    periodStartSecs  = ishaSecs;
+    periodEndSecs    = fajrSecs + 86400;
+  }
+
+  // Progress fraction (clamp 0–1)
+  const span = periodEndSecs - periodStartSecs;
+  const elapsed = nowSecs - periodStartSecs;
+  const progressFraction = span > 0 ? Math.min(1, Math.max(0, elapsed / span)) : 0;
+
+  // Countdown
+  let countdownSecs: number;
+  if (period === "fajr") {
+    // During Fajr, countdown is to Sunrise
+    countdownSecs = Math.max(0, sunriseSecs - nowSecs);
+  } else if (nextIsWrapped) {
+    countdownSecs = Math.max(0, (fajrSecs + 86400) - nowSecs);
+  } else {
+    const nextTime = nextPrayerIdx >= 0 ? prayers[nextPrayerIdx].time24 : sunriseTime24;
+    countdownSecs = Math.max(0, toSeconds(nextTime) - nowSecs);
+  }
+
+  const justStarted =
+    period !== "midnight" && (nowSecs - periodStartSecs) < JUST_STARTED_WINDOW;
+
+  const meta = PERIOD_META[period];
+
+  return {
+    period,
+    label:        meta.label,
+    arabicLabel:  meta.arabicLabel,
+    emoji:        meta.emoji,
+    justStarted,
+    currentPrayerIdx,
+    nextPrayerIdx,
+    nextIsWrapped,
+    countdownSecs,
+    progressFraction,
+    notificationKey: `${period}-${new Date().toDateString()}`,
+  };
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -167,8 +324,8 @@ async function fetchPrayerTimes(
   school: number
 ): Promise<ReadyData> {
   const today = new Date();
-  const dd = String(today.getDate()).padStart(2, "0");
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd   = String(today.getDate()).padStart(2, "0");
+  const mm   = String(today.getMonth() + 1).padStart(2, "0");
   const yyyy = today.getFullYear();
 
   const url =
@@ -181,66 +338,281 @@ async function fetchPrayerTimes(
   if (json.code !== 200) throw new Error(json.status ?? "API error");
 
   const timings = json.data.timings as Record<string, string>;
-  const hijri = json.data.date.hijri;
+  const hijri   = json.data.date.hijri;
 
   const prayers: PrayerInfo[] = PRAYER_META.map((meta) => ({
-    id: meta.id,
-    name: meta.name,
+    id:         meta.id,
+    name:       meta.name,
     arabicName: meta.arabicName,
-    time24: timings[meta.id].slice(0, 5),
-    icon: meta.icon,
-    period: meta.period,
+    time24:     timings[meta.id].slice(0, 5),
+    icon:       meta.icon,
+    period:     meta.period,
   }));
 
+  const sunriseTime24 = (timings["Sunrise"] ?? timings["sunrise"] ?? "06:00").slice(0, 5);
   const hijriDate = `${hijri.day} ${hijri.month.en} ${hijri.year} AH`;
-  return { prayers, hijriDate, location };
+  return { prayers, sunriseTime24, hijriDate, location };
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function PrayerCard({
-  prayer, index, isNext, countdown,
+/** The large hero countdown card — primary visual focus on the page */
+function StatusHeroCard({
+  status,
+  prayers,
+  sunriseTime24,
 }: {
-  prayer: PrayerInfo;
-  index: number;
-  isNext: boolean;
-  countdown: string;
+  status: LiveStatus;
+  prayers: PrayerInfo[];
+  sunriseTime24: string;
 }) {
-  const Icon = prayer.icon;
-  const style = periodStyles[prayer.period];
-  const { display, suffix } = parseTime(prayer.time24);
+  const meta = PERIOD_META[status.period];
+
+  // Determine the next name & time string to display
+  const nextName = (() => {
+    if (status.period === "fajr")    return "Sunrise";
+    if (status.period === "midnight") return "Fajr";
+    if (status.nextPrayerIdx >= 0)   return prayers[status.nextPrayerIdx].name;
+    return "";
+  })();
+
+  const nextTime24 = (() => {
+    if (status.period === "fajr")    return sunriseTime24;
+    if (status.period === "midnight") return prayers[0].time24;
+    if (status.nextPrayerIdx >= 0)   return prayers[status.nextPrayerIdx].time24;
+    return "";
+  })();
+
+  const { display: nextDisplay, suffix: nextSuffix } = nextTime24
+    ? parseTime(nextTime24)
+    : { display: "--:--", suffix: "" };
+
+  // Current period from/to labels for progress bar
+  const fromLabel = (() => {
+    if (status.period === "midnight") return `${PERIOD_META.isha.emoji} Isha`;
+    if (status.period === "fajr")     return `${PERIOD_META.fajr.emoji} Fajr`;
+    if (status.period === "sunrise")  return `${PERIOD_META.sunrise.emoji} Sunrise`;
+    if (status.period === "dhuhr")    return `${PERIOD_META.dhuhr.emoji} Dhuhr`;
+    if (status.period === "asr")      return `${PERIOD_META.asr.emoji} Asr`;
+    if (status.period === "maghrib")  return `${PERIOD_META.maghrib.emoji} Maghrib`;
+    return `${PERIOD_META.isha.emoji} Isha`;
+  })();
+
+  const toLabel = (() => {
+    if (status.period === "fajr")    return `☀️ Sunrise`;
+    if (status.period === "midnight") return `🌅 Fajr`;
+    return `${PERIOD_META[["", "fajr", "dhuhr", "asr", "maghrib", "isha"][status.nextPrayerIdx] as PeriodKey ?? "fajr"].emoji} ${nextName}`;
+  })();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      layout
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.1 + index * 0.07, ease: "easeOut" }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
       className={cn(
-        "relative overflow-hidden rounded-2xl bg-gradient-to-br text-white shadow-md",
-        style.bg,
-        isNext && "ring-2 ring-white/50 shadow-lg scale-[1.02]"
+        "relative overflow-hidden rounded-3xl shadow-xl",
+        `bg-gradient-to-br ${meta.accentFrom} ${meta.accentTo}`,
+        meta.glow,
       )}
     >
+      {/* Islamic pattern texture */}
+      <div className="absolute inset-0 islamic-pattern opacity-30" aria-hidden="true" />
+
+      <div className="relative p-5 sm:p-6 space-y-5">
+
+        {/* ── Just-started banner ── */}
+        <AnimatePresence>
+          {status.justStarted && JUST_STARTED_MESSAGES[status.period] && (
+            <motion.div
+              key="just-started"
+              initial={{ opacity: 0, scale: 0.94, y: -6 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{    opacity: 0, scale: 0.94, y: -4  }}
+              transition={{ duration: 0.4 }}
+              className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 text-center"
+            >
+              <p className="text-white font-bold text-base">
+                {JUST_STARTED_MESSAGES[status.period]}
+              </p>
+              <p className="text-white/75 text-xs mt-0.5">
+                May Allah accept your prayer.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Status label ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">
+              Current Status
+            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={status.period}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="text-white text-xl font-bold mt-0.5 leading-tight"
+              >
+                {meta.emoji} {meta.label}
+              </motion.p>
+            </AnimatePresence>
+            <p
+              className="font-arabic text-white/60 text-sm mt-0.5"
+              dir="rtl"
+              lang="ar"
+            >
+              {meta.arabicLabel}
+            </p>
+          </div>
+
+          {/* Pulsing dot */}
+          <div className="shrink-0 relative">
+            <motion.div
+              animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+              className="w-3 h-3 rounded-full bg-white/70"
+            />
+          </div>
+        </div>
+
+        {/* ── Next prayer card ── */}
+        <div className="rounded-2xl bg-black/25 backdrop-blur-sm border border-white/10 p-4">
+          <p className="text-white/55 text-[11px] font-semibold uppercase tracking-widest mb-2">
+            {status.period === "midnight" ? "Tonight's" : "Next Prayer"}
+          </p>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className={cn("text-3xl font-bold text-white leading-none", meta.textAccent.replace("text-", "text-"))}>
+                {nextName}
+              </p>
+              <p className="text-white/60 text-sm mt-1 font-medium">
+                {nextDisplay}
+                <span className="text-white/40 text-xs ml-1">{nextSuffix}</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-white/55 text-[11px] mb-0.5">Remaining</p>
+              <AnimatePresence mode="popLayout">
+                <motion.p
+                  key={Math.floor(status.countdownSecs / 60)}
+                  initial={{ opacity: 0.6 }}
+                  animate={{ opacity: 1 }}
+                  className="font-mono text-2xl font-bold text-white tabular-nums tracking-tight leading-none"
+                >
+                  {formatCountdown(status.countdownSecs)}
+                </motion.p>
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Progress bar ── */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-white/50 font-medium">{fromLabel}</span>
+            <span className="text-[11px] text-white/50 font-medium">{toLabel}</span>
+          </div>
+          <div className="relative h-2 rounded-full bg-white/15 overflow-hidden">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full bg-white/70"
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, status.progressFraction * 100).toFixed(2)}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+          <p className="text-right text-[11px] text-white/40">
+            {(status.progressFraction * 100).toFixed(0)}% elapsed
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Individual prayer card in the daily schedule list */
+function PrayerCard({
+  prayer,
+  index,
+  isCurrent,
+  isNext,
+  countdown,
+}: {
+  prayer: PrayerInfo;
+  index: number;
+  isCurrent: boolean;
+  isNext: boolean;
+  countdown: string;
+}) {
+  const Icon  = prayer.icon;
+  const style = periodStyles[prayer.period];
+  const { display, suffix } = parseTime(prayer.time24);
+
+  // Map prayer emojis
+  const EMOJIS: Record<string, string> = {
+    Fajr: "🌅", Dhuhr: "🌞", Asr: "🌤", Maghrib: "🌇", Isha: "🌙",
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.05 + index * 0.06, ease: "easeOut" }}
+      className={cn(
+        "relative overflow-hidden rounded-2xl bg-gradient-to-br text-white shadow-md transition-all duration-300",
+        style.bg,
+        isCurrent && "ring-2 ring-white/60 shadow-xl scale-[1.01]",
+        isNext    && !isCurrent && "ring-1 ring-white/30 shadow-lg",
+      )}
+    >
+      {/* Subtle glow for current prayer */}
+      {isCurrent && (
+        <motion.div
+          animate={{ opacity: [0.12, 0.22, 0.12] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-white"
+          aria-hidden="true"
+        />
+      )}
+
       <div className="absolute inset-0 islamic-pattern" aria-hidden="true" />
       <div className="relative flex items-center gap-4 p-4 sm:p-5">
-        <div className="shrink-0 w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center">
-          <Icon className={cn("w-6 h-6", style.iconColor)} strokeWidth={1.6} />
+        <div className={cn(
+          "shrink-0 w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center transition-colors",
+          isCurrent && "bg-white/20 border-white/30",
+        )}>
+          <span className="text-xl leading-none" aria-hidden="true">
+            {EMOJIS[prayer.id] ?? ""}
+          </span>
         </div>
+
         <div className="flex-1 min-w-0">
-          <p className="font-arabic text-sm text-white/70 leading-none mb-0.5" dir="rtl">
+          <p className="font-arabic text-sm text-white/70 leading-none mb-0.5" dir="rtl" lang="ar">
             {prayer.arabicName}
           </p>
           <p className="text-base font-semibold text-white leading-tight">{prayer.name}</p>
-          {isNext && (
-            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-semibold">
-              Next prayer
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {isCurrent && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/25 text-white text-[10px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                In Progress
+              </span>
+            )}
+            {isNext && !isCurrent && (
+              <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-semibold">
+                Next Prayer
+              </span>
+            )}
+          </div>
         </div>
+
         <div className="shrink-0 text-right">
           <p className="text-xl font-bold text-white tracking-wide">{display}</p>
           <p className="text-xs text-white/60 font-medium">{suffix}</p>
-          {isNext && (
+          {isNext && !isCurrent && (
             <p className="text-[10px] text-white/80 font-mono mt-0.5 tabular-nums">
               in {countdown}
             </p>
@@ -276,22 +648,29 @@ function SkeletonCard({ period }: { period: string }) {
 export default function PrayerTimesPage() {
   const { settings } = useSettings();
   const [state, setState] = useState<PageState>({ status: "idle" });
-  const [countdown, setCountdown] = useState("--:--");
-  const [nextIdx, setNextIdx] = useState(0);
-  const [cityInput, setCityInput] = useState("");
-  const [cityError, setCityError] = useState("");
+  const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
+  const [nextIdx, setNextIdx] = useState(0);             // for prayer list highlight fallback
+  const [countdown, setCountdown] = useState("00:00:00"); // human-readable for prayer cards
+  const [cityInput,   setCityInput]   = useState("");
+  const [cityError,   setCityError]   = useState("");
   const [cityLoading, setCityLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const hasAutoLoaded = useRef(false);
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoLoaded  = useRef(false);
 
-  const startTicker = useCallback((prayers: PrayerInfo[]) => {
+  const startTicker = useCallback((prayers: PrayerInfo[], sunriseTime24: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
+
     const tick = () => {
+      const status = computeLiveStatus(prayers, sunriseTime24);
+      setLiveStatus(status);
+
+      // Keep existing nextIdx/countdown for the prayer card list
       const idx = nextPrayerIndex(prayers);
       const wrapped = idx === 0 && nowMinutes() > toMinutes(prayers[prayers.length - 1].time24);
       setNextIdx(idx);
       setCountdown(formatCountdown(Math.max(0, secondsUntil(prayers[idx].time24, wrapped))));
     };
+
     tick();
     timerRef.current = setInterval(tick, 1000);
   }, []);
@@ -305,16 +684,16 @@ export default function PrayerTimesPage() {
     try {
       const data = await fetchPrayerTimes(location, method, school);
       setState({ status: "ready", data });
-      startTicker(data.prayers);
+      startTicker(data.prayers, data.sunriseTime24);
       if (settings.prayerNotifications && getNotificationPermission() === "granted") {
         schedulePrayerNotifications(data.prayers, {
-          prayerNotifications: settings.prayerNotifications,
-          prayerReminderMinutes: settings.prayerReminderMinutes,
-          fajrNotification: settings.fajrNotification,
-          dhuhrNotification: settings.dhuhrNotification,
-          asrNotification: settings.asrNotification,
-          maghribNotification: settings.maghribNotification,
-          ishaNotification: settings.ishaNotification,
+          prayerNotifications:    settings.prayerNotifications,
+          prayerReminderMinutes:  settings.prayerReminderMinutes,
+          fajrNotification:       settings.fajrNotification,
+          dhuhrNotification:      settings.dhuhrNotification,
+          asrNotification:        settings.asrNotification,
+          maghribNotification:    settings.maghribNotification,
+          ishaNotification:       settings.ishaNotification,
         });
       }
     } catch {
@@ -353,8 +732,8 @@ export default function PrayerTimesPage() {
           3: "Location request timed out. Enter your city manually below.",
         };
         setState({
-          status: "error",
-          message: msgs[err.code] ?? "Location unavailable.",
+          status:    "error",
+          message:   msgs[err.code] ?? "Location unavailable.",
           permDenied: err.code === 1,
         });
       },
@@ -378,15 +757,20 @@ export default function PrayerTimesPage() {
   }, [cityInput, loadFromLocation]);
 
   const isReady = state.status === "ready";
-  const isBusy = state.status === "locating" || state.status === "fetching";
+  const isBusy  = state.status === "locating" || state.status === "fetching";
   const prayers = isReady ? state.data.prayers : [];
-  const now = new Date();
+  const sunriseTime24 = isReady ? state.data.sunriseTime24 : "06:00";
+
+  const now       = new Date();
   const dateLabel = now.toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
   const methodLabel = METHOD_LABELS[settings.calculationMethod] ?? "Muslim World League";
   const madhabLabel = settings.madhab === "hanafi" ? "Hanafi" : "Standard";
+
+  // ── Sunrise row for the daily schedule ────────────────────────────────────
+  const sunriseDisplay = sunriseTime24 ? parseTime(sunriseTime24) : null;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -454,6 +838,17 @@ export default function PrayerTimesPage() {
           </p>
         </motion.div>
 
+        {/* ── Live status hero ── */}
+        {isReady && liveStatus && (
+          <div className="mb-6">
+            <StatusHeroCard
+              status={liveStatus}
+              prayers={prayers}
+              sunriseTime24={sunriseTime24}
+            />
+          </div>
+        )}
+
         {/* ── Location / status panel ── */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -519,7 +914,7 @@ export default function PrayerTimesPage() {
             </div>
           )}
 
-          {/* Ready */}
+          {/* Ready — location chip */}
           {state.status === "ready" && (
             <div className="rounded-2xl border border-border bg-secondary/40 p-3 flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -577,18 +972,71 @@ export default function PrayerTimesPage() {
           )}
         </motion.div>
 
-        {/* ── Prayer cards ── */}
+        {/* ── Prayer list + Sunrise row ── */}
         {isReady ? (
           <div className="space-y-3">
-            {prayers.map((prayer, index) => (
-              <PrayerCard
-                key={prayer.id}
-                prayer={prayer}
-                index={index}
-                isNext={index === nextIdx}
-                countdown={countdown}
-              />
-            ))}
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
+              Today's Schedule
+            </p>
+
+            {prayers.map((prayer, index) => {
+              const isCurrent = liveStatus?.currentPrayerIdx === index;
+              const isNext    = index === nextIdx && !isCurrent;
+
+              return (
+                <PrayerCard
+                  key={prayer.id}
+                  prayer={prayer}
+                  index={index}
+                  isCurrent={isCurrent}
+                  isNext={isNext}
+                  countdown={countdown}
+                />
+              );
+            })}
+
+            {/* Sunrise row — shown between Fajr and Dhuhr cards */}
+            {sunriseDisplay && (
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.18, ease: "easeOut" }}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-600/70 to-orange-700/70 text-white shadow-md border border-amber-500/20",
+                  liveStatus?.period === "sunrise" && "ring-2 ring-amber-300/60 shadow-xl scale-[1.01]",
+                )}
+              >
+                {liveStatus?.period === "sunrise" && (
+                  <motion.div
+                    animate={{ opacity: [0.12, 0.22, 0.12] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-white"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="absolute inset-0 islamic-pattern" aria-hidden="true" />
+                <div className="relative flex items-center gap-4 p-4 sm:p-5">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center">
+                    <Sunrise className="w-6 h-6 text-yellow-200" strokeWidth={1.6} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-arabic text-sm text-white/70 leading-none mb-0.5" dir="rtl" lang="ar">شروق الشمس</p>
+                    <p className="text-base font-semibold text-white leading-tight">Sunrise</p>
+                    {liveStatus?.period === "sunrise" && (
+                      <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-white/25 text-white text-[10px] font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xl font-bold text-white tracking-wide">{sunriseDisplay.display}</p>
+                    <p className="text-xs text-white/60 font-medium">{sunriseDisplay.suffix}</p>
+                    <p className="text-[10px] text-white/50 mt-0.5">No prayer</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         ) : isBusy ? (
           <div className="space-y-3">
@@ -609,6 +1057,9 @@ export default function PrayerTimesPage() {
             ? `Times via Aladhan · ${methodLabel} · ${madhabLabel} Asr`
             : "Allow location access or enter your city to load accurate prayer times."}
         </motion.p>
+
+        {/* Bottom safe area */}
+        <div style={{ height: "max(1rem, env(safe-area-inset-bottom))" }} />
       </div>
     </div>
   );

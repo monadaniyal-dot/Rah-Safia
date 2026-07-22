@@ -1,0 +1,172 @@
+Enhance the existing Prayer Countdown widget in Quran Al-Falah into a premium, elegant live prayer status dashboard without changing the current prayer time calculations or breaking any existing functionality.
+
+Requirements
+
+Keep all existing prayer time logic exactly as it is.
+
+Only improve the UI, UX and live countdown experience.
+
+1. Live Countdown
+
+Display:
+
+Next Prayer
+
+Asr
+
+01:24:18 remaining
+
+Requirements:
+
+Update every second.
+No page refresh.
+Smooth transitions.
+2. Current Prayer Status
+
+Show one of the following:
+
+Time for Fajr
+Fajr has started
+Sunrise
+Time for Dhuhr
+Time for Asr
+Time for Maghrib
+Time for Isha
+
+Make it visually attractive.
+
+3. Prayer Progress Bar
+
+Add a beautiful animated progress bar that fills gradually between the current prayer and the next prayer.
+
+Example:
+
+Fajr ───────────────► Sunrise
+
+The progress should update live based on time elapsed.
+
+Use emerald/gold accents matching Quran Al-Falah.
+
+4. Highlight Current Prayer
+
+In today's prayer list:
+
+Highlight the active prayer.
+Slight glow.
+Premium border.
+Soft animation.
+5. Next Prayer Card
+
+Display:
+
+Next Prayer
+Asr
+
+3:45 PM
+
+01:24:18 remaining
+
+Make this the primary visual focus.
+
+6. Finished Prayer
+
+When a prayer begins:
+
+Instead of abruptly switching,
+animate smoothly:
+
+Fajr Time Has Begun
+
+May Allah accept your prayer.
+
+Then begin counting down to the following prayer.
+
+7. Sunrise State
+
+During Sunrise:
+
+Display:
+
+Sunrise
+
+Waiting for Dhuhr
+
+04:17:32 remaining
+
+Use a warm sunrise accent.
+
+8. Midnight State
+
+After Isha:
+
+Display:
+
+Tomorrow's Fajr
+
+06:12:40 remaining
+
+Handle the midnight transition correctly.
+
+9. Prayer Icons
+
+Add elegant icons:
+
+🌅 Fajr
+
+☀️ Sunrise
+
+🌞 Dhuhr
+
+🌤 Asr
+
+🌇 Maghrib
+
+🌙 Isha
+
+Use the existing icon library.
+
+10. Micro Animations
+
+Add subtle animations only:
+
+Countdown updates smoothly.
+Progress bar animates.
+Current prayer card gently pulses.
+No distracting animations.
+11. Prayer Reminder Preparation
+
+Build the component architecture so future prayer notifications can easily be connected.
+
+Do not implement notifications yet.
+
+12. Responsive Design
+
+Ensure perfect display on:
+
+Android
+iPhone
+Tablet
+Desktop
+
+No layout shifts.
+
+13. Performance
+Use efficient timers.
+Avoid unnecessary re-renders.
+No memory leaks.
+Countdown should continue smoothly while the app is open.
+14. Code Safety
+Do not change prayer calculation methods.
+Do not modify existing settings.
+Do not break Qibla, Qur'an, Tafseer, Hadith, Islamic Calendar, Daily Inspiration, or any other existing feature.
+Follow the existing architecture and coding style.
+Ensure TypeScript passes without errors.
+One enhancement I'd add later (after this)
+
+A 24-hour Prayer Timeline.
+
+Imagine a horizontal timeline showing the whole day:
+
+🌅 Fajr ── ☀️ Sunrise ── 🌞 Dhuhr ── 🌤 Asr ── 🌇 Maghrib ── 🌙 Isha
+                         ▲
+                      Current Time
