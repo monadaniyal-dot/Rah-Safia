@@ -1,0 +1,141 @@
+Upgrade Quran Al-Falah by adding a complete Islamic Calendar & Islamic Events feature.
+
+Goal
+
+Create a modern, elegant, and fully responsive Islamic Calendar page that becomes one of the main features of Quran Al-Falah while maintaining the existing design language and without breaking any current functionality.
+
+1. Current Date Card
+
+At the top of the page display:
+
+Current Hijri Date
+Current Gregorian Date
+Day of Week
+Islamic Month Name
+Hijri Year
+
+Example:
+
+27 Muharram 1448 AH
+Tuesday
+22 July 2026
+
+Use accurate Hijri calculations or a trusted Islamic calendar source already compatible with the project. Do not hardcode dates.
+
+2. Beautiful Monthly Hijri Calendar
+
+Display a complete monthly Hijri calendar.
+
+Requirements:
+
+Previous month button
+Next month button
+Highlight today's Hijri date
+Show Gregorian day number inside each Hijri date cell in smaller text
+Responsive on mobile and desktop
+Smooth transitions when changing months
+Maintain Quran Al-Falah dark theme
+3. Islamic Events Section
+
+Add a section called:
+
+Upcoming Islamic Events
+
+Display important dates including:
+
+Islamic New Year
+Ashura
+Mawlid (12 Rabi' al-Awwal)
+Isra & Mi'raj
+Mid Sha'ban
+Ramadan
+Laylat-ul-Qadr
+Eid-ul-Fitr
+Day of Arafah
+Eid-ul-Adha
+
+Each event should show:
+
+Event name
+Hijri date
+Gregorian equivalent
+Days remaining
+
+Example:
+
+Ramadan begins
+
+1 Ramadan 1448 AH
+
+Begins in 183 days
+4. Event Details
+
+When a user taps any event,
+open a beautiful modal/page showing:
+
+Event name
+Importance
+Short authentic description
+Relevant Qur'an verses (if applicable)
+Authentic Hadith references (if applicable)
+
+Use only authentic information.
+
+5. Monthly Highlight
+
+Show a short description of the current Islamic month.
+
+Example:
+
+Muharram
+
+"Muharram is one of the four sacred months mentioned in the Qur'an..."
+
+Keep descriptions concise and authentic.
+
+6. Optional Notifications (Preparation Only)
+
+Build the architecture so that future versions can support reminders for:
+
+Ramadan
+Eid
+Ashura
+Arafah
+
+Do not implement notifications yet.
+Only prepare the structure cleanly.
+
+7. Navigation
+
+Add an elegant Islamic Calendar icon to the application's navigation using the existing design system.
+
+Do not remove or modify any existing navigation items.
+
+8. UI Requirements
+
+Follow Quran Al-Falah's existing design:
+
+Dark theme by default
+Premium glassmorphism cards
+Smooth Framer Motion animations
+Rounded corners
+Emerald & gold accents
+Mobile-first responsive layout
+No layout shifts
+9. Code Quality
+Reuse existing components where possible.
+Keep TypeScript strict.
+No duplicated code.
+Follow the existing folder structure.
+Do not break Prayer Times, Qur'an, Tafseer, Hadith, Qibla, Daily Inspiration, Settings, or any existing feature.
+10. Future Expansion
+
+Build this module so future features can be added easily, including:
+
+Ramadan countdown
+Daily Islamic event notifications
+Fasting tracker
+Hajj countdown
+Islamic anniversary reminders
+
+Design the architecture with extensibility in mind.

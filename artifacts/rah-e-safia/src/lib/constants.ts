@@ -13,6 +13,7 @@ import {
   HandHeart,
   ScrollText,
   Languages,
+  CalendarDays,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -98,6 +99,13 @@ export const navItems: NavItem[] = [
     arabicLabel: "الكلمات والشهادة",
     icon: ScrollText,
     path: "/kalimas",
+  },
+  {
+    id: "islamic-calendar",
+    label: "Islamic Calendar",
+    arabicLabel: "التقويم الإسلامي",
+    icon: CalendarDays,
+    path: "/islamic-calendar",
   },
   {
     id: "word-meanings",
