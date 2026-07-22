@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import NotFoundPage from "@/pages/NotFoundPage";
 import { Router, Route, Switch } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 import AppShell from "@/components/layout/AppShell";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { scheduleDailyNotifications } from "@/lib/daily-notifications";
@@ -65,8 +66,6 @@ function PageLoader() {
 }
 
 export default function App() {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem("rah-e-safia:settings");
@@ -76,7 +75,7 @@ export default function App() {
   }, []);
 
   return (
-    <Router base={base}>
+    <Router hook={useHashLocation}>
       <ErrorBoundary>
         <AppShell>
           <Suspense fallback={<PageLoader />}>

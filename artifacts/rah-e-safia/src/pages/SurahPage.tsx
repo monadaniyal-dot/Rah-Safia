@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -438,6 +438,7 @@ const AyahCard = memo(function AyahCard({
 export default function SurahPage() {
   const { number } = useParams<{ number: string }>();
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { settings } = useSettings();
   const [mode, setMode] = useState<TranslationMode>(() => langToMode(settings.translationLanguage));
   const [ayahs, setAyahs] = useState<AyahWithTranslations[]>([]);
@@ -550,9 +551,11 @@ export default function SurahPage() {
   // When the user taps an occurrence in the word-study sheet and the target is
   // a different surah, we navigate to /quran/{N}?ayah={M}. This effect reads
   // that param once and scrolls + flashes the referenced ayah.
+  // `search` comes from Wouter's useSearch() and works in both history and
+  // hash routing modes — no direct window.location.search access needed.
   useEffect(() => {
     if (!ayahs.length) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(search);
     const targetAyah = parseInt(params.get("ayah") ?? "0", 10);
     if (!targetAyah) return;
 
@@ -566,8 +569,7 @@ export default function SurahPage() {
         }
       }, 200);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ayahs.length]);
+  }, [ayahs.length, search, surahNum]);
 
   // ── After ayahs load: restore mode + scroll to saved position ─────────────
   useEffect(() => {

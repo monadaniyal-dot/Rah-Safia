@@ -8,7 +8,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -149,14 +149,10 @@ function ResultRow({ result, index, onNavigate }: ResultRowProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RootMeaningSearchPage() {
-  const [query, setQuery] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("q") ?? "";
-  });
-  const [debouncedQuery, setDebouncedQuery] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("q") ?? "";
-  });
+  const search = useSearch();
+  const initialQuery = new URLSearchParams(search).get("q") ?? "";
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
 
