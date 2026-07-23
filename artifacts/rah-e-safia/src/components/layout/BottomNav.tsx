@@ -61,13 +61,15 @@ export default function BottomNav() {
             className={cn(
               "lg:hidden fixed left-3 right-3 z-50 rounded-2xl",
               "bg-card border border-border shadow-2xl overflow-hidden",
+              "flex flex-col",
             )}
             style={{
               bottom: `calc(env(safe-area-inset-bottom) + ${playerActive ? "5.75rem" : "4.5rem"})`,
+              maxHeight: "calc(100dvh - 10rem)",
             }}
           >
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
+            {/* Drawer header — never scrolls away */}
+            <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
               <div>
                 <p className="text-sm font-semibold text-foreground">More</p>
                 <p className="text-xs text-muted-foreground">All features</p>
@@ -87,6 +89,8 @@ export default function BottomNav() {
               </div>
             </div>
 
+            {/* Scrollable items area */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             {/* Drawer nav items — 2-column grid */}
             <div className="p-3 grid grid-cols-2 gap-2">
               {moreItems.map((item, i) => {
@@ -151,6 +155,7 @@ export default function BottomNav() {
                 );
               })}
             </div>
+            </div>{/* end scrollable area */}
           </motion.div>
         )}
       </AnimatePresence>

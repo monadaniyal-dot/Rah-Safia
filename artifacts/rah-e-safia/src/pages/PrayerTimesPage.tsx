@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Sun, CloudSun, Sunset, Moon, Star,
   LocateFixed, Loader2, AlertCircle, MapPin, RefreshCw, Search,
-  Sunrise,
+  Sunrise, Settings,
 } from "lucide-react";
+import { getNativeLocation } from "@/lib/native-location";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/use-settings";
 import { getSavedLocation } from "@/lib/location-store";
@@ -399,9 +400,15 @@ function StatusHeroCard({
   })();
 
   const toLabel = (() => {
-    if (status.period === "fajr")    return `☀️ Sunrise`;
+    if (status.period === "fajr")     return `☀️ Sunrise`;
     if (status.period === "midnight") return `🌅 Fajr`;
-    return `${PERIOD_META[["", "fajr", "dhuhr", "asr", "maghrib", "isha"][status.nextPrayerIdx] as PeriodKey ?? "fajr"].emoji} ${nextName}`;
+    // Map nextPrayerIdx (0=Fajr … 4=Isha) to the corresponding period key.
+    // Use a Record so there is never an undefined lookup regardless of index value.
+    const idxToPeriod: Record<number, PeriodKey> = {
+      0: "fajr", 1: "dhuhr", 2: "asr", 3: "maghrib", 4: "isha",
+    };
+    const nextKey = idxToPeriod[status.nextPrayerIdx] ?? "fajr";
+    return `${(PERIOD_META[nextKey] ?? PERIOD_META.fajr).emoji} ${nextName}`;
   })();
 
   return (
@@ -712,33 +719,21 @@ export default function PrayerTimesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const requestGPS = useCallback(() => {
-    if (!navigator.geolocation) {
-      setState({ status: "error", message: "Geolocation is not supported by your browser.", permDenied: true });
-      return;
-    }
+  const requestGPS = useCallback(async () => {
     setState({ status: "locating" });
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const cityName = await reverseGeocode(lat, lon);
-        await loadFromLocation({ lat, lon, cityName });
-      },
-      (err) => {
-        const msgs: Record<number, string> = {
-          1: "Location permission was denied. Enter your city manually below.",
-          2: "Your location could not be determined. Enter your city manually below.",
-          3: "Location request timed out. Enter your city manually below.",
-        };
-        setState({
-          status:    "error",
-          message:   msgs[err.code] ?? "Location unavailable.",
-          permDenied: err.code === 1,
-        });
-      },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
-    );
+    const result = await getNativeLocation();
+    if (result.ok) {
+      const cityName = await reverseGeocode(result.lat, result.lon);
+      await loadFromLocation({ lat: result.lat, lon: result.lon, cityName });
+    } else {
+      setState({
+        status:     "error",
+        message:    result.denied
+          ? result.message
+          : result.message + " Enter your city manually below.",
+        permDenied: result.denied,
+      });
+    }
   }, [loadFromLocation]);
 
   const handleCitySearch = useCallback(async () => {
@@ -911,6 +906,25 @@ export default function PrayerTimesPage() {
                   </button>
                 )}
               </div>
+
+              {/* Permanently denied — guide user to Settings */}
+              {state.permDenied && (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 p-3 flex items-start gap-2.5">
+                  <Settings className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" strokeWidth={1.8} />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">How to enable location</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+                      Open your device <strong>Settings</strong> → <strong>Apps</strong> → <strong>Quran Al-Falah</strong> → <strong>Permissions</strong> → enable <strong>Location</strong>, then return here.
+                    </p>
+                    <button
+                      onClick={requestGPS}
+                      className="mt-2 text-xs font-semibold text-primary hover:underline"
+                    >
+                      I've enabled it — try again
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
